@@ -35,7 +35,7 @@ interface RecipeIngredient {
 }
 
 export default function QuickAdd({ onAdd, onClose }: Props) {
-  const [mode, setMode] = useState<'presets' | 'manual' | 'scan' | 'recipe'>('presets')
+  const [mode, setMode] = useState<'presets' | 'preset' | 'manual' | 'scan' | 'recipe'>('presets')
   const [name, setName] = useState('')
   const [cal, setCal] = useState('')
   const [protein, setProtein] = useState('')
@@ -60,8 +60,11 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
   const [customIngredientSodium, setCustomIngredientSodium] = useState('')
   const [customIngredientCarbs, setCustomIngredientCarbs] = useState('')
   const [customIngredientFiber, setCustomIngredientFiber] = useState('')
+  const [selectedQuickItem, setSelectedQuickItem] = useState<QuickItem | null>(null)
+  const [quickServings, setQuickServings] = useState('1')
   const scanNeedsVerification = mode === 'scan' && scanConfidence !== null && scanConfidence < 99 && !valuesVerified
   const servingCount = Math.max(0, Number(servings) || 0)
+  const quickServingCount = Math.max(0, Number(quickServings) || 0)
   const recipeServingCount = Math.max(0, Number(recipeServings) || 0)
   const recipeEatenCount = Math.max(0, Number(recipeServingsEaten) || 0)
   const recipeResults = searchIngredients(recipeQuery)
@@ -81,6 +84,33 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
       sodium: Math.round((Number(sodium) || 0) * servingCount),
       carbs: rounded((Number(carbs) || 0) * servingCount),
       fiber: rounded((Number(fiber) || 0) * servingCount),
+    })
+  }
+
+  function selectQuickItem(item: QuickItem) {
+    setSelectedQuickItem(item)
+    setQuickServings('1')
+    setMode('preset')
+  }
+
+  function quickItemTotals(item: QuickItem, count: number) {
+    return {
+      cal: Math.round(item.cal * count),
+      protein: rounded(item.protein * count),
+      sodium: Math.round(item.sodium * count),
+      carbs: rounded(item.carbs * count),
+      fiber: rounded(item.fiber * count),
+    }
+  }
+
+  function handleQuickItemSave() {
+    if (!selectedQuickItem || quickServingCount <= 0) return
+    const totals = quickItemTotals(selectedQuickItem, quickServingCount)
+    const suffix = quickServingCount === 1 ? '' : ` (${quickServingCount}x)`
+    onAdd({
+      ...selectedQuickItem,
+      name: `${selectedQuickItem.name}${suffix}`,
+      ...totals,
     })
   }
 
@@ -239,7 +269,7 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
               {QUICK_ITEMS.map((item) => (
                 <button
                   key={item.name}
-                  onClick={() => onAdd(item)}
+                  onClick={() => selectQuickItem(item)}
                   className="w-full t-card2 border t-border rounded-xl p-3 text-left hover:border-emerald-500/50 hover:bg-[var(--accent)]/5 transition-all flex items-center justify-between"
                 >
                   <div className="flex items-center gap-3">
@@ -254,7 +284,7 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
                       </div>
                     </div>
                   </div>
-                  <span className="t-accent text-lg">+</span>
+                  <span className="t-accent text-xs font-semibold">Choose</span>
                 </button>
               ))}
             </div>
@@ -275,6 +305,71 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
               className="w-full border t-border text-gray-400 rounded-xl py-3 text-sm hover:t-text hover:border-[#555] transition-colors"
             >
               ✎ Add something else manually
+            </button>
+          </>
+        ) : mode === 'preset' && selectedQuickItem ? (
+          <>
+            <div className="rounded-2xl t-card2 p-4 mb-4">
+              <div className="flex items-center gap-3">
+                <span className="text-3xl">{selectedQuickItem.emoji}</span>
+                <div>
+                  <p className="font-semibold t-text">{selectedQuickItem.name}</p>
+                  <p className="text-xs t-muted">Base serving: {selectedQuickItem.cal} cal • {selectedQuickItem.protein}g P • {selectedQuickItem.carbs}g C</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="text-xs t-muted uppercase tracking-wider">Amount</label>
+                <div className="flex items-center gap-2 mt-1">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.25"
+                    value={quickServings}
+                    onChange={e => setQuickServings(e.target.value)}
+                    className="flex-1 t-card2 border t-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50 t-text"
+                  />
+                  <span className="t-muted text-sm w-8">x</span>
+                </div>
+                <div className="grid grid-cols-5 gap-1.5 mt-2">
+                  {['0.5', '1', '1.5', '2', '3'].map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setQuickServings(value)}
+                      className={`rounded-lg py-1.5 text-xs font-semibold ${quickServings === value ? 'btn-confirm' : 'btn-secondary'}`}
+                    >
+                      {value}x
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {quickServingCount > 0 && (
+              <div className="rounded-xl t-card2 p-3 mb-3">
+                <p className="text-xs t-muted uppercase tracking-wider mb-1">Totals added</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="macro-pill rounded-lg px-2 py-1 text-xs font-medium">{quickItemTotals(selectedQuickItem, quickServingCount).cal} cal</span>
+                  <span className="text-xs text-blue-400 rounded-lg px-2 py-1" style={{ background: 'rgba(59,130,246,0.10)' }}>{quickItemTotals(selectedQuickItem, quickServingCount).protein}g P</span>
+                  <span className="text-xs text-amber-400 rounded-lg px-2 py-1" style={{ background: 'rgba(245,158,11,0.10)' }}>{quickItemTotals(selectedQuickItem, quickServingCount).sodium}mg Na</span>
+                  <span className="text-xs text-pink-400 rounded-lg px-2 py-1" style={{ background: 'rgba(236,72,153,0.10)' }}>{quickItemTotals(selectedQuickItem, quickServingCount).carbs}g C</span>
+                  <span className="text-xs text-purple-400 rounded-lg px-2 py-1" style={{ background: 'rgba(139,92,246,0.10)' }}>{quickItemTotals(selectedQuickItem, quickServingCount).fiber}g F</span>
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={handleQuickItemSave}
+              disabled={quickServingCount <= 0}
+              className="w-full bg-[var(--accent)] disabled:macro-pill disabled:t-muted text-black font-bold rounded-xl py-3 text-sm transition-colors mb-2"
+            >
+              Add to Today
+            </button>
+            <button onClick={() => setMode('presets')} className="w-full t-muted text-sm py-2 hover:t-text transition-colors">
+              ← Back to quick items
             </button>
           </>
         ) : mode === 'recipe' ? (
