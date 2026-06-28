@@ -222,16 +222,20 @@ export default function Home() {
 
   return (
     <main className="max-w-md mx-auto min-h-screen pb-24">
-      <div className="px-4 pt-10 pb-4">
-        <div className="flex items-center justify-between mb-1">
-          <p className="text-gray-500 text-sm">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+      {/* Header with gradient */}
+      <div className="app-header px-4 pt-10 pb-5">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2.5">
+            <img src="/icon-192.png" alt="logo" className="w-8 h-8 rounded-xl" />
+            <p className="text-gray-500 text-sm">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+          </div>
           <Link href="/history" className="text-gray-500 text-sm hover:text-white transition-colors">History →</Link>
         </div>
         <h1 className="text-2xl font-bold">{getGreeting()}, Bharath 👋</h1>
       </div>
 
       {log ? (
-        <div className="mx-4 mb-4 bg-[#141414] border border-[#222] rounded-2xl p-4 flex items-center justify-between">
+        <div className="mx-4 mb-4 bg-gradient-to-r from-[#111111] to-[#0D1A14] border border-emerald-500/10 rounded-2xl p-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
             <span className="text-2xl">{dayLabel?.emoji}</span>
             <div>
@@ -380,9 +384,9 @@ export default function Home() {
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-[#0A0A0A] border-t border-[#222] flex">
-        <button className="flex-1 py-4 text-emerald-500 flex flex-col items-center gap-1">
-          <span className="text-lg">📋</span><span className="text-xs font-medium">Today</span>
+      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bottom-nav border-t border-[#1E1E1E] flex">
+        <button className="flex-1 py-4 text-emerald-400 flex flex-col items-center gap-1">
+          <span className="text-lg">📋</span><span className="text-xs font-semibold">Today</span>
         </button>
         <Link href="/history" className="flex-1 py-4 text-gray-500 flex flex-col items-center gap-1 hover:text-white transition-colors">
           <span className="text-lg">📅</span><span className="text-xs">History</span>

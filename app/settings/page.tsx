@@ -63,8 +63,9 @@ export default function SettingsPage() {
 
   async function resetToday() {
     setResetLoading(true)
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
     await supabase.from('daily_logs').delete().eq('date', today)
+    await supabase.from('quick_adds').delete().eq('date', today)
     setResetLoading(false)
     window.location.href = '/'
   }

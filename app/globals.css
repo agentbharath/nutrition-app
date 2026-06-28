@@ -2,24 +2,63 @@
 
 :root {
   --green: #10B981;
+  --green-dark: #059669;
   --amber: #F59E0B;
   --red: #EF4444;
-  --card: #141414;
-  --border: #222222;
-  --muted: #666666;
+  --card: #111111;
+  --card2: #161616;
+  --border: #1E1E1E;
+  --muted: #555555;
+  --bg: #080808;
 }
 
 * { box-sizing: border-box; }
-body { -webkit-font-smoothing: antialiased; }
+body { 
+  -webkit-font-smoothing: antialiased;
+  background: var(--bg);
+}
 
-.progress-bar {
-  height: 6px;
-  border-radius: 9999px;
-  background: #222;
-  overflow: hidden;
+/* Smooth scrolling */
+html { scroll-behavior: smooth; }
+
+/* Progress ring animation */
+circle { transition: stroke-dashoffset 0.6s cubic-bezier(0.4,0,0.2,1); }
+
+/* Card hover */
+.meal-card {
+  transition: border-color 0.2s, transform 0.1s;
 }
-.progress-fill {
-  height: 100%;
-  border-radius: 9999px;
-  transition: width 0.5s ease;
+.meal-card:active { transform: scale(0.99); }
+
+/* Green glow on confirmed */
+.confirmed-glow {
+  box-shadow: 0 0 0 1px rgba(16,185,129,0.3), 0 4px 20px rgba(16,185,129,0.06);
 }
+
+/* Gradient header */
+.app-header {
+  background: linear-gradient(180deg, rgba(16,185,129,0.08) 0%, transparent 100%);
+}
+
+/* Pill button */
+.pill-btn {
+  border-radius: 9999px;
+  transition: all 0.15s;
+}
+
+/* Bottom nav blur */
+.bottom-nav {
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  background: rgba(8,8,8,0.92);
+}
+
+/* Smooth confirm button */
+.confirm-btn {
+  background: linear-gradient(135deg, rgba(16,185,129,0.15), rgba(16,185,129,0.08));
+  transition: all 0.2s;
+}
+.confirm-btn:hover {
+  background: linear-gradient(135deg, rgba(16,185,129,0.25), rgba(16,185,129,0.15));
+}
+.confirm-btn:active { transform: scale(0.98); }

@@ -65,7 +65,7 @@ export default function MealCard({
   }
 
   return (
-    <div className={`bg-[#141414] border rounded-2xl overflow-hidden transition-all ${confirmed ? 'border-emerald-500/40' : 'border-[#222]'}`}>
+    <div className={`meal-card bg-[#111111] border rounded-2xl overflow-hidden ${confirmed ? "border-emerald-500/30 confirmed-glow" : "border-[#1E1E1E]"}`}>
       <div className="p-4">
         {/* Header */}
         <div className="flex items-start gap-2 mb-3">
@@ -105,7 +105,7 @@ export default function MealCard({
           {!confirmed && (
             <button
               onClick={() => onConfirm(adjusted)}
-              className="flex-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-xl py-2 text-xs font-semibold hover:bg-emerald-500/20 transition-colors"
+              className="flex-1 confirm-btn text-emerald-400 border border-emerald-500/20 rounded-xl py-2 text-xs font-semibold"
             >
               ✓ Mark as eaten
             </button>
