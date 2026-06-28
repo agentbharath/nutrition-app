@@ -67,29 +67,44 @@ export default function SettingsPage() {
         {/* THEME */}
         <div className="t-card rounded-2xl p-4">
           <p className="font-semibold text-sm t-text mb-0.5">Theme</p>
-          <p className="text-xs t-muted mb-4">Choose your look</p>
-          <div className="grid grid-cols-3 gap-3">
+          <p className="text-xs t-muted mb-4">Choose your vibe</p>
+          <div className="grid grid-cols-2 gap-2.5">
             {THEMES.map((t) => {
               const active = theme.name === t.name
+              const isLight = ['light','matcha','coastal','salt'].includes(t.name)
               return (
                 <button key={t.name} onClick={() => setTheme(t.name as ThemeName)}
-                  className="rounded-xl overflow-hidden transition-all"
-                  style={{ border: active ? `2px solid ${t.preview.accent}` : '2px solid transparent',
-                    boxShadow: active ? `0 0 0 1px ${t.preview.accent}40, 0 4px 12px ${t.preview.accent}20` : 'none' }}>
-                  {/* Preview */}
-                  <div className="h-16 p-2 flex flex-col gap-1.5" style={{ background: t.preview.bg }}>
-                    <div className="h-2 rounded-sm w-4/5" style={{ background: t.preview.card }} />
-                    <div className="h-2 rounded-sm w-3/5" style={{ background: t.preview.card, opacity: 0.7 }} />
-                    <div className="flex gap-1 mt-auto">
-                      <div className="h-1.5 w-1.5 rounded-full" style={{ background: t.preview.accent }} />
-                      <div className="h-1.5 flex-1 rounded-full" style={{ background: t.preview.accent, opacity: 0.3 }} />
+                  className="rounded-xl overflow-hidden transition-all text-left"
+                  style={{
+                    border: active ? `2px solid ${t.preview.accent}` : `2px solid transparent`,
+                    boxShadow: active ? `0 0 0 1px ${t.preview.accent}40, 0 6px 20px ${t.preview.accent}25` : 'none',
+                    outline: active ? 'none' : undefined,
+                  }}>
+                  {/* App mockup preview */}
+                  <div className="p-3 h-20 flex flex-col gap-1.5" style={{ background: t.preview.bg }}>
+                    {/* Header bar */}
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full" style={{ background: t.preview.accent }} />
+                      <div className="h-1.5 rounded-full flex-1" style={{ background: t.preview.card, opacity: 0.8 }} />
+                    </div>
+                    {/* Card mockup */}
+                    <div className="rounded-lg p-1.5 flex-1 flex flex-col gap-1" style={{ background: t.preview.card }}>
+                      <div className="h-1.5 w-3/4 rounded-full" style={{ background: t.preview.accent, opacity: 0.7 }} />
+                      <div className="flex gap-1 mt-auto">
+                        {[1,0.6,0.4].map((op,i) => (
+                          <div key={i} className="h-1 flex-1 rounded-full" style={{ background: t.preview.accent, opacity: op }} />
+                        ))}
+                      </div>
                     </div>
                   </div>
                   {/* Label */}
-                  <div className="py-2 px-2 text-center" style={{ background: t.preview.card }}>
-                    <p className="text-xs font-semibold" style={{ color: active ? t.preview.accent : t.name === 'light' ? '#374151' : '#AAAAAA' }}>
-                      {t.emoji} {t.label}
-                    </p>
+                  <div className="px-3 py-2 flex items-center justify-between" style={{ background: t.preview.card }}>
+                    <div>
+                      <p className="text-xs font-semibold leading-tight" style={{ color: active ? t.preview.accent : t.preview.text, opacity: active ? 1 : 0.85 }}>
+                        {t.emoji} {t.label}
+                      </p>
+                    </div>
+                    {active && <span className="text-xs font-bold" style={{ color: t.preview.accent }}>✓</span>}
                   </div>
                 </button>
               )
@@ -97,7 +112,8 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* NOTIFICATIONS */}
+
+                {/* NOTIFICATIONS */}
         <div className="t-card rounded-2xl p-4">
           <p className="font-semibold text-sm t-text mb-0.5">Push Notifications</p>
           <p className="text-xs t-muted mb-3">12 PM lunch • 6 PM dinner • PST daily</p>
