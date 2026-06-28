@@ -221,15 +221,15 @@ export default function Home() {
   }
 
   return (
-    <main className="max-w-md mx-auto min-h-screen pb-24">
+    <main className="max-w-md mx-auto min-h-screen pb-24 t-bg">
       {/* Header with gradient */}
       <div className="app-header px-4 pt-10 pb-5">
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2.5">
             <img src="/icon-192.png" alt="logo" className="w-8 h-8 rounded-xl" />
-            <p className="text-gray-500 text-sm">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
+            <p className="t-muted text-sm">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</p>
           </div>
-          <Link href="/history" className="text-gray-500 text-sm hover:text-white transition-colors">History →</Link>
+          <Link href="/history" className="t-muted text-sm hover:t-text transition-colors">History →</Link>
         </div>
         <h1 className="text-2xl font-bold">{getGreeting()}, Bharath 👋</h1>
       </div>
@@ -240,7 +240,7 @@ export default function Home() {
             <span className="text-2xl">{dayLabel?.emoji}</span>
             <div>
               <p className="font-semibold text-sm">{dayLabel?.label}</p>
-              <p className="text-gray-500 text-xs">{log.gym_day ? '🏋️ Gym day' : '🛋️ Rest day'}</p>
+              <p className="t-muted text-xs">{log.gym_day ? '🏋️ Gym day' : '🛋️ Rest day'}</p>
             </div>
           </div>
           <button onClick={() => setShowDaySelector(true)} className="text-xs text-emerald-500 border border-emerald-500/30 rounded-lg px-3 py-1.5 hover:bg-emerald-500/10 transition-colors">Change</button>
@@ -252,9 +252,9 @@ export default function Home() {
       )}
 
       {log && (
-        <div className="mx-4 mb-4 bg-[#141414] border border-[#222] rounded-2xl p-4">
+        <div className="mx-4 mb-4 t-card2 border t-border rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
-            <p className="text-xs text-gray-500 uppercase tracking-wider">Today&apos;s Progress</p>
+            <p className="text-xs t-muted uppercase tracking-wider">Today&apos;s Progress</p>
             <button onClick={() => setShowQuickAdd(true)} className="text-xs text-emerald-500 border border-emerald-500/30 rounded-lg px-2.5 py-1 hover:bg-emerald-500/10 transition-colors">➕ Quick Add</button>
           </div>
           <div className="grid grid-cols-5 gap-1">
@@ -264,33 +264,33 @@ export default function Home() {
             <ProgressRing label="Fiber" value={consumed.fiber} target={TARGETS.fiber} unit="g" color="#8B5CF6" />
             <ProgressRing label="Carbs" value={consumed.carbs} target={TARGETS.carbs} unit="g" color="#EC4899" />
           </div>
-          <div className="mt-3 pt-3 border-t border-[#222] grid grid-cols-3 gap-2 text-center">
+          <div className="mt-3 pt-3 border-t t-border grid grid-cols-3 gap-2 text-center">
             <div>
               <p className="text-emerald-500 font-bold text-sm">{Math.max(0, Math.round(TARGETS.cal - consumed.cal))}</p>
-              <p className="text-gray-500 text-xs">cal left</p>
+              <p className="t-muted text-xs">cal left</p>
             </div>
             <div>
               <p className={`font-bold text-sm ${TARGETS.sodium - consumed.sodium < 200 ? 'text-red-500' : 'text-amber-500'}`}>
                 {Math.max(0, Math.round(TARGETS.sodium - consumed.sodium))}mg
               </p>
-              <p className="text-gray-500 text-xs">Na left</p>
+              <p className="t-muted text-xs">Na left</p>
             </div>
             <div>
-              <p className={`font-bold text-sm ${consumed.protein >= TARGETS.protein ? 'text-emerald-500' : 'text-white'}`}>
+              <p className={`font-bold text-sm ${consumed.protein >= TARGETS.protein ? 'text-emerald-500' : 't-text'}`}>
                 {consumed.protein >= TARGETS.protein ? '✓ Done' : `${Math.round(TARGETS.protein - consumed.protein)}g`}
               </p>
-              <p className="text-gray-500 text-xs">protein</p>
+              <p className="t-muted text-xs">protein</p>
             </div>
           </div>
           {quickAdds.length > 0 && (
-            <div className="mt-3 pt-3 border-t border-[#222]">
-              <p className="text-xs text-gray-600 mb-2">Quick adds:</p>
+            <div className="mt-3 pt-3 border-t t-border">
+              <p className="text-xs t-muted mb-2">Quick adds:</p>
               <div className="flex flex-wrap gap-1">
                 {quickAdds.map((qa, i) => (
-                  <span key={i} className="bg-[#222] rounded-lg px-2 py-1 text-xs text-gray-400 flex items-center gap-1.5">
+                  <span key={i} className="macro-pill rounded-lg px-2 py-1 text-xs text-gray-400 flex items-center gap-1.5">
                     {qa.emoji} {qa.name} +{qa.cal}cal
                     {qa.id && (
-                      <button onClick={() => removeQuickAdd(qa.id!)} className="text-gray-600 hover:text-red-400 transition-colors ml-0.5">×</button>
+                      <button onClick={() => removeQuickAdd(qa.id!)} className="t-muted hover:text-red-400 transition-colors ml-0.5">×</button>
                     )}
                   </span>
                 ))}
@@ -315,7 +315,7 @@ export default function Home() {
 
       {log && meals && (
         <div className="px-4 space-y-3">
-          <p className="text-xs text-gray-500 uppercase tracking-wider mt-2">Today&apos;s Meals</p>
+          <p className="text-xs t-muted uppercase tracking-wider mt-2">Today&apos;s Meals</p>
 
           <MealCard meal={meals.breakfast} label="Breakfast" emoji="🥣"
             confirmed={log.breakfast_confirmed}
@@ -380,18 +380,18 @@ export default function Home() {
       {!log && !loading && (
         <div className="mx-4 mt-8 text-center">
           <p className="text-5xl mb-4">📋</p>
-          <p className="text-gray-500 text-sm">Set today&apos;s plan to see your meal suggestions</p>
+          <p className="t-muted text-sm">Set today&apos;s plan to see your meal suggestions</p>
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bottom-nav border-t border-[#1E1E1E] flex">
+      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bottom-nav border-t t-border flex">
         <button className="flex-1 py-4 text-emerald-400 flex flex-col items-center gap-1">
           <span className="text-lg">📋</span><span className="text-xs font-semibold">Today</span>
         </button>
-        <Link href="/history" className="flex-1 py-4 text-gray-500 flex flex-col items-center gap-1 hover:text-white transition-colors">
+        <Link href="/history" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
           <span className="text-lg">📅</span><span className="text-xs">History</span>
         </Link>
-        <Link href="/settings" className="flex-1 py-4 text-gray-500 flex flex-col items-center gap-1 hover:text-white transition-colors">
+        <Link href="/settings" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
           <span className="text-lg">⚙️</span><span className="text-xs">Settings</span>
         </Link>
       </nav>
