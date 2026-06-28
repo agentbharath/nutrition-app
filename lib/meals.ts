@@ -50,10 +50,11 @@ const BREAKFAST: Meal = {
     { name: 'Chia Seeds', amount: '1 tbsp', cal: 58, protein: 2, sodium: 2, fiber: 4, carbs: 5 },
     { name: 'Flaxseed Powder', amount: '1 tsp', cal: 15, protein: 0.5, sodium: 1, fiber: 1, carbs: 1 },
     { name: 'Almonds', amount: '10 whole', cal: 82, protein: 3, sodium: 0, fiber: 1.7, carbs: 3 },
+    { name: 'Pumpkin Seeds', amount: '1 tbsp', cal: 46, protein: 2.5, sodium: 0, fiber: 0.5, carbs: 2 },
     { name: 'Frozen Blueberries', brand: 'Any', amount: '1 cup', cal: 84, protein: 1, sodium: 1, fiber: 3.6, carbs: 21 },
   ],
-  totals: { cal: 451, protein: 48.5, sodium: 157, fiber: 10.3, carbs: 42 },
-  notes: 'Add 1 tbsp pumpkin seeds (+46 cal, +75mg Mg) when you buy them — use Quick Add',
+  totals: { cal: 497, protein: 51, sodium: 157, fiber: 10.8, carbs: 44 },
+  notes: 'Morning supplement: Sports Research D3+K2 (1 softgel with this meal)',
 }
 
 // ── TUNA MASALA (WFH lunch) ───────────────────────────────────
@@ -112,22 +113,22 @@ const WFH_DINNER: Meal = {
   id: 'wfh_dinner',
   name: 'Avocado Toast + Eggs',
   items: [
-    { name: "Dave's Killer Bread Powerseed Thin", brand: "Dave's Killer Bread", amount: '3 slices', cal: 180, protein: 9, sodium: 270, fiber: 9, carbs: 36 },
+    { name: 'Ezekiel Low Sodium Bread', brand: 'Food for Life', amount: '3 slices', cal: 240, protein: 12, sodium: 0, fiber: 9, carbs: 45 },
     { name: 'Avocado', amount: '1 full', cal: 240, protein: 3, sodium: 10, fiber: 10, carbs: 12 },
     { name: 'Whole Eggs', amount: '2', cal: 140, protein: 12, sodium: 140, fiber: 0, carbs: 1 },
     { name: 'Kirkland Frozen Veggies', brand: 'Kirkland', amount: '1.5 cups', cal: 53, protein: 3, sodium: 23, fiber: 3, carbs: 14 },
     { name: 'Once Again Peanut Butter', brand: 'Once Again Organic', amount: '1 tbsp (rest day)', cal: 95, protein: 4, sodium: 0, fiber: 1, carbs: 3 },
   ],
-  totals: { cal: 708, protein: 31, sodium: 443, fiber: 23, carbs: 66 },
-  notes: "Switch to Ezekiel Low Sodium when available (saves 270mg Na). Skip PB on gym days.",
+  totals: { cal: 768, protein: 34, sodium: 173, fiber: 23, carbs: 75 },
+  notes: 'Ezekiel Low Sodium — 0mg sodium, 80 cal/slice. Skip PB on gym days.',
 }
 
 const WFH_DINNER_GYM: Meal = {
   ...WFH_DINNER,
   id: 'wfh_dinner_gym',
   name: 'Avocado Toast + Eggs (Gym)',
-  items: WFH_DINNER.items.slice(0, 4), // No PB on gym days
-  totals: { cal: 613, protein: 27, sodium: 443, fiber: 22, carbs: 63 },
+  items: WFH_DINNER.items.slice(0, 4),
+  totals: { cal: 673, protein: 30, sodium: 173, fiber: 22, carbs: 72 },
   notes: 'No peanut butter on gym days.',
 }
 

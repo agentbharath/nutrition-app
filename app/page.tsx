@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import { supabase, DayType, DailyLog } from '@/lib/supabase'
-import { DAY_TYPE_OPTIONS, getDayMeals, calculateDayTotals, TARGETS, SWAP_OPTIONS } from '@/lib/meals'
+import { DAY_TYPE_OPTIONS, getDayMeals, calculateDayTotals, TARGETS, SWAP_OPTIONS, Macro } from '@/lib/meals'
 import ProgressRing from '@/components/ProgressRing'
 import MealCard from '@/components/MealCard'
 import DaySelector from '@/components/DaySelector'
@@ -20,6 +20,8 @@ function getGreeting() {
 
 interface QuickItem { name: string; emoji: string; cal: number; protein: number; sodium: number; carbs: number; fiber: number }
 
+type MealKey = 'breakfast' | 'lunch' | 'shake' | 'vita_coco' | 'dinner' | 'snack'
+
 export default function Home() {
   const [log, setLog] = useState<DailyLog | null>(null)
   const [quickAdds, setQuickAdds] = useState<QuickItem[]>([])
@@ -29,11 +31,19 @@ export default function Home() {
   const [showBreakfastOverride, setShowBreakfastOverride] = useState(false)
   const [showQuickAdd, setShowQuickAdd] = useState(false)
   const [saving, setSaving] = useState(false)
+  // Per-meal adjusted totals (from quantity editing)
+  const [adjustedTotals, setAdjustedTotals] = useState<Partial<Record<MealKey, Macro>>>({})
+  // Per-meal multipliers (persisted)
+  const [mealMultipliers, setMealMultipliers] = useState<Partial<Record<MealKey, Record<number, number>>>>({})
   const today = getTodayDate()
 
   const fetchLog = useCallback(async () => {
     const { data } = await supabase.from('daily_logs').select('*').eq('date', today).single()
     setLog(data)
+    if (data?.meal_customizations) {
+      const c = data.meal_customizations as Record<string, Record<number, number>>
+      setMealMultipliers(c as any)
+    }
     const { data: qa } = await supabase.from('quick_adds').select('*').eq('date', today)
     setQuickAdds(qa || [])
     setLoading(false)
@@ -49,11 +59,9 @@ export default function Home() {
       breakfast_confirmed: true, breakfast_override: false,
       lunch_confirmed: false, dinner_confirmed: false,
       shake_confirmed: false, vita_coco_confirmed: false, snack_confirmed: false,
-      cal_total: totals.cal,
-      protein_total: totals.protein,
-      sodium_total: totals.sodium,
-      fiber_total: totals.fiber,
-      carbs_total: totals.carbs,
+      cal_total: totals.cal, protein_total: totals.protein,
+      sodium_total: totals.sodium, fiber_total: totals.fiber, carbs_total: totals.carbs,
+      meal_customizations: {},
     }, { onConflict: 'date' }).select().single()
     setLog(data); setShowDaySelector(false); setSaving(false)
   }
@@ -62,6 +70,33 @@ export default function Home() {
     if (!log) return
     const { data } = await supabase.from('daily_logs').update(updates).eq('id', log.id).select().single()
     setLog(data)
+  }
+
+  async function confirmMeal(key: MealKey, adjusted?: Macro) {
+    const fieldMap: Record<MealKey, string> = {
+      breakfast: 'breakfast_confirmed', lunch: 'lunch_confirmed',
+      shake: 'shake_confirmed', vita_coco: 'vita_coco_confirmed',
+      dinner: 'dinner_confirmed', snack: 'snack_confirmed',
+    }
+    await updateLog({ [fieldMap[key]]: true } as any)
+    if (adjusted) setAdjustedTotals(prev => ({ ...prev, [key]: adjusted }))
+  }
+
+  async function undoMeal(key: MealKey) {
+    const fieldMap: Record<MealKey, string> = {
+      breakfast: 'breakfast_confirmed', lunch: 'lunch_confirmed',
+      shake: 'shake_confirmed', vita_coco: 'vita_coco_confirmed',
+      dinner: 'dinner_confirmed', snack: 'snack_confirmed',
+    }
+    await updateLog({ [fieldMap[key]]: false } as any)
+    setAdjustedTotals(prev => { const n = { ...prev }; delete n[key]; return n })
+  }
+
+  async function saveMealMultipliers(key: MealKey, multipliers: Record<number, number>, adjusted: Macro) {
+    const newCustom = { ...mealMultipliers, [key]: multipliers }
+    setMealMultipliers(newCustom)
+    setAdjustedTotals(prev => ({ ...prev, [key]: adjusted }))
+    await updateLog({ meal_customizations: newCustom } as any)
   }
 
   async function applySwap(meal: 'lunch'|'dinner', newMealId: string) {
@@ -76,17 +111,6 @@ export default function Home() {
     setShowQuickAdd(false)
   }
 
-  // Confirm shake — only once, tracked in daily_logs
-  async function confirmShake() {
-    if (log?.shake_confirmed) return
-    await updateLog({ shake_confirmed: true })
-  }
-
-  async function confirmVitaCoco() {
-    if (log?.vita_coco_confirmed) return
-    await updateLog({ vita_coco_confirmed: true })
-  }
-
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
@@ -95,52 +119,33 @@ export default function Home() {
 
   const meals = log ? getDayMeals(log.day_type as DayType, log.gym_day) : null
   const dayLabel = log ? DAY_TYPE_OPTIONS.find(d => d.value === log.day_type) : null
-  const swapOptions = showSwap === 'dinner' && log ? (SWAP_OPTIONS[`${log.day_type}_dinner_${log.gym_day ? 'gym' : 'rest'}`] || SWAP_OPTIONS[`${log.day_type}_dinner`] || []) : []
+  const swapOptions = showSwap === 'dinner' && log
+    ? (SWAP_OPTIONS[`${log.day_type}_dinner_${log.gym_day ? 'gym' : 'rest'}`] || SWAP_OPTIONS[`${log.day_type}_dinner`] || [])
+    : []
 
-  // Compute consumed based on confirmed meals only
+  // Helper: get effective totals for a meal (adjusted or default)
+  function getEffective(key: MealKey, defaultMacro: Macro): Macro {
+    return adjustedTotals[key] || defaultMacro
+  }
+
+  // Build consumed from confirmed meals
   const consumed = { cal: 0, protein: 0, sodium: 0, fiber: 0, carbs: 0 }
   if (log && meals) {
-    // Breakfast
+    const add = (m: Macro) => { consumed.cal += m.cal; consumed.protein += m.protein; consumed.sodium += m.sodium; consumed.fiber += m.fiber; consumed.carbs += m.carbs }
+
     if (log.breakfast_confirmed) {
       if (log.breakfast_override) {
         consumed.cal += log.breakfast_override_cal || 0
         consumed.protein += log.breakfast_override_protein || 0
         consumed.sodium += log.breakfast_override_sodium || 0
-      } else {
-        const b = meals.breakfast.totals
-        consumed.cal += b.cal; consumed.protein += b.protein; consumed.sodium += b.sodium; consumed.fiber += b.fiber; consumed.carbs += b.carbs
-      }
+      } else add(getEffective('breakfast', meals.breakfast.totals))
     }
-    // Lunch
-    if (log.lunch_confirmed && meals.lunch) {
-      const l = meals.lunch.totals
-      consumed.cal += l.cal; consumed.protein += l.protein; consumed.sodium += l.sodium; consumed.fiber += l.fiber; consumed.carbs += l.carbs
-    }
-    // Shake — tracked via shake_confirmed, not quick_adds
-    if ((log as any).shake_confirmed && meals.shake) {
-      const s = meals.shake.totals
-      consumed.cal += s.cal; consumed.protein += s.protein; consumed.sodium += s.sodium; consumed.fiber += s.fiber; consumed.carbs += s.carbs
-    }
-    // Vita Coco — tracked via vita_coco_confirmed
-    if ((log as any).vita_coco_confirmed && meals.vitaCoco) {
-      const v = meals.vitaCoco.totals
-      consumed.cal += v.cal; consumed.protein += v.protein; consumed.sodium += v.sodium; consumed.fiber += v.fiber; consumed.carbs += v.carbs
-    }
-    // Dinner
-    if (log.dinner_confirmed && meals.dinner) {
-      const d = meals.dinner.totals
-      consumed.cal += d.cal; consumed.protein += d.protein; consumed.sodium += d.sodium; consumed.fiber += d.fiber; consumed.carbs += d.carbs
-    }
-    // Snack
-    if ((log as any).snack_confirmed && meals.snack) {
-      const sn = meals.snack.totals
-      consumed.cal += sn.cal; consumed.protein += sn.protein; consumed.sodium += sn.sodium; consumed.fiber += sn.fiber; consumed.carbs += sn.carbs
-    }
-    // Quick adds (banana, extras etc — NOT Fairlife)
-    quickAdds.forEach(qa => {
-      consumed.cal += qa.cal; consumed.protein += qa.protein; consumed.sodium += qa.sodium
-      consumed.fiber += qa.fiber; consumed.carbs += qa.carbs
-    })
+    if (log.lunch_confirmed && meals.lunch) add(getEffective('lunch', meals.lunch.totals))
+    if ((log as any).shake_confirmed && meals.shake) add(getEffective('shake', meals.shake.totals))
+    if ((log as any).vita_coco_confirmed && meals.vitaCoco) add(getEffective('vita_coco', meals.vitaCoco.totals))
+    if (log.dinner_confirmed && meals.dinner) add(getEffective('dinner', meals.dinner.totals))
+    if ((log as any).snack_confirmed && meals.snack) add(getEffective('snack', meals.snack.totals))
+    quickAdds.forEach(qa => { consumed.cal += qa.cal; consumed.protein += qa.protein; consumed.sodium += qa.sodium; consumed.fiber += qa.fiber; consumed.carbs += qa.carbs })
   }
 
   return (
@@ -174,9 +179,7 @@ export default function Home() {
         <div className="mx-4 mb-4 bg-[#141414] border border-[#222] rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs text-gray-500 uppercase tracking-wider">Today&apos;s Progress</p>
-            <button onClick={() => setShowQuickAdd(true)} className="text-xs text-emerald-500 border border-emerald-500/30 rounded-lg px-2.5 py-1 hover:bg-emerald-500/10 transition-colors">
-              ➕ Quick Add
-            </button>
+            <button onClick={() => setShowQuickAdd(true)} className="text-xs text-emerald-500 border border-emerald-500/30 rounded-lg px-2.5 py-1 hover:bg-emerald-500/10 transition-colors">➕ Quick Add</button>
           </div>
           <div className="grid grid-cols-5 gap-1">
             <ProgressRing label="Cal" value={consumed.cal} target={TARGETS.cal} unit="" color="#10B981" />
@@ -203,15 +206,12 @@ export default function Home() {
               <p className="text-gray-500 text-xs">protein</p>
             </div>
           </div>
-
           {quickAdds.length > 0 && (
             <div className="mt-3 pt-3 border-t border-[#222]">
-              <p className="text-xs text-gray-600 mb-2">Quick adds today:</p>
+              <p className="text-xs text-gray-600 mb-2">Quick adds:</p>
               <div className="flex flex-wrap gap-1">
                 {quickAdds.map((qa, i) => (
-                  <span key={i} className="bg-[#222] rounded-lg px-2 py-1 text-xs text-gray-400">
-                    {qa.emoji} {qa.name} +{qa.cal}cal
-                  </span>
+                  <span key={i} className="bg-[#222] rounded-lg px-2 py-1 text-xs text-gray-400">{qa.emoji} {qa.name} +{qa.cal}cal</span>
                 ))}
               </div>
             </div>
@@ -235,12 +235,64 @@ export default function Home() {
       {log && meals && (
         <div className="px-4 space-y-3">
           <p className="text-xs text-gray-500 uppercase tracking-wider mt-2">Today&apos;s Meals</p>
-          <MealCard meal={meals.breakfast} label="Breakfast" emoji="🥣" confirmed={log.breakfast_confirmed} onConfirm={() => {}} onOverride={() => setShowBreakfastOverride(true)} isOverride={log.breakfast_override} />
-          {meals.lunch && <MealCard meal={meals.lunch} label="Lunch" emoji="🥗" confirmed={log.lunch_confirmed} onConfirm={() => updateLog({ lunch_confirmed: true })} />}
-          {meals.shake && <MealCard meal={meals.shake} label="Protein Shake" emoji="🥛" confirmed={(log as any).shake_confirmed || false} onConfirm={confirmShake} />}
-          {meals.vitaCoco && <MealCard meal={meals.vitaCoco} label="Post-Gym Electrolytes" emoji="🥥" confirmed={(log as any).vita_coco_confirmed || false} onConfirm={confirmVitaCoco} />}
-          <MealCard meal={meals.dinner} label="Dinner" emoji="🍽️" confirmed={log.dinner_confirmed} onConfirm={() => updateLog({ dinner_confirmed: true })} onSwap={swapOptions.length > 0 ? () => setShowSwap('dinner') : undefined} swappable={swapOptions.length > 0} />
-          {meals.snack && <MealCard meal={meals.snack} label="Snack" emoji="🍊" confirmed={(log as any).snack_confirmed || false} onConfirm={() => updateLog({ snack_confirmed: true })} />}
+
+          <MealCard meal={meals.breakfast} label="Breakfast" emoji="🥣"
+            confirmed={log.breakfast_confirmed}
+            onConfirm={(adj) => confirmMeal('breakfast', adj)}
+            onUndo={() => undoMeal('breakfast')}
+            onOverride={() => setShowBreakfastOverride(true)}
+            isOverride={log.breakfast_override}
+            savedMultipliers={(mealMultipliers as any).breakfast}
+            onMultipliersChange={(m, adj) => saveMealMultipliers('breakfast', m, adj)}
+          />
+
+          {meals.lunch && (
+            <MealCard meal={meals.lunch} label="Lunch" emoji="🥗"
+              confirmed={log.lunch_confirmed}
+              onConfirm={(adj) => confirmMeal('lunch', adj)}
+              onUndo={() => undoMeal('lunch')}
+              savedMultipliers={(mealMultipliers as any).lunch}
+              onMultipliersChange={(m, adj) => saveMealMultipliers('lunch', m, adj)}
+            />
+          )}
+
+          {meals.shake && (
+            <MealCard meal={meals.shake} label="Protein Shake" emoji="🥛"
+              confirmed={(log as any).shake_confirmed || false}
+              onConfirm={(adj) => confirmMeal('shake', adj)}
+              onUndo={() => undoMeal('shake')}
+              savedMultipliers={(mealMultipliers as any).shake}
+              onMultipliersChange={(m, adj) => saveMealMultipliers('shake', m, adj)}
+            />
+          )}
+
+          {meals.vitaCoco && (
+            <MealCard meal={meals.vitaCoco} label="Post-Gym Electrolytes" emoji="🥥"
+              confirmed={(log as any).vita_coco_confirmed || false}
+              onConfirm={(adj) => confirmMeal('vita_coco', adj)}
+              onUndo={() => undoMeal('vita_coco')}
+            />
+          )}
+
+          <MealCard meal={meals.dinner} label="Dinner" emoji="🍽️"
+            confirmed={log.dinner_confirmed}
+            onConfirm={(adj) => confirmMeal('dinner', adj)}
+            onUndo={() => undoMeal('dinner')}
+            onSwap={swapOptions.length > 0 ? () => setShowSwap('dinner') : undefined}
+            swappable={swapOptions.length > 0}
+            savedMultipliers={(mealMultipliers as any).dinner}
+            onMultipliersChange={(m, adj) => saveMealMultipliers('dinner', m, adj)}
+          />
+
+          {meals.snack && (
+            <MealCard meal={meals.snack} label="Snack" emoji="🍊"
+              confirmed={(log as any).snack_confirmed || false}
+              onConfirm={(adj) => confirmMeal('snack', adj)}
+              onUndo={() => undoMeal('snack')}
+              savedMultipliers={(mealMultipliers as any).snack}
+              onMultipliersChange={(m, adj) => saveMealMultipliers('snack', m, adj)}
+            />
+          )}
         </div>
       )}
 
@@ -265,7 +317,12 @@ export default function Home() {
 
       {showDaySelector && <DaySelector onSelect={createLog} onClose={() => setShowDaySelector(false)} saving={saving} />}
       {showSwap && <SwapModal mealType={showSwap} options={swapOptions} onSelect={(id) => applySwap(showSwap, id)} onClose={() => setShowSwap(null)} />}
-      {showBreakfastOverride && <BreakfastOverride onSave={async (c,p,s) => { await updateLog({ breakfast_override: true, breakfast_override_cal: c, breakfast_override_protein: p, breakfast_override_sodium: s }); setShowBreakfastOverride(false) }} onClose={() => setShowBreakfastOverride(false)} />}
+      {showBreakfastOverride && (
+        <BreakfastOverride
+          onSave={async (c, p, s) => { await updateLog({ breakfast_override: true, breakfast_override_cal: c, breakfast_override_protein: p, breakfast_override_sodium: s }); setShowBreakfastOverride(false) }}
+          onClose={() => setShowBreakfastOverride(false)}
+        />
+      )}
       {showQuickAdd && <QuickAdd onAdd={handleQuickAdd} onClose={() => setShowQuickAdd(false)} />}
     </main>
   )
