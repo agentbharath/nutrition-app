@@ -107,11 +107,13 @@ export default function Home() {
       shake: 'shake_confirmed', vita_coco: 'vita_coco_confirmed',
       dinner: 'dinner_confirmed', snack: 'snack_confirmed',
     }
-    const { data } = await supabase.from('daily_logs').update({ [fieldMap[key]]: true } as any).eq('id', log!.id).select().single()
+    await supabase.from('daily_logs').update({ [fieldMap[key]]: true } as any).eq('id', log!.id)
     const newAdj = adjusted ? { ...adjustedTotals, [key]: adjusted } : adjustedTotals
     if (adjusted) setAdjustedTotals(newAdj)
+    // Refetch fresh data from DB
+    const { data } = await supabase.from('daily_logs').select('*').eq('id', log!.id).single()
     setLog(data)
-    await syncConsumed(data, newAdj, quickAdds)
+    if (data) await syncConsumed(data, newAdj, quickAdds)
   }
 
   async function undoMeal(key: MealKey) {
@@ -120,12 +122,14 @@ export default function Home() {
       shake: 'shake_confirmed', vita_coco: 'vita_coco_confirmed',
       dinner: 'dinner_confirmed', snack: 'snack_confirmed',
     }
-    const { data } = await supabase.from('daily_logs').update({ [fieldMap[key]]: false } as any).eq('id', log!.id).select().single()
+    await supabase.from('daily_logs').update({ [fieldMap[key]]: false } as any).eq('id', log!.id)
     const newAdj = { ...adjustedTotals }
     delete newAdj[key]
     setAdjustedTotals(newAdj)
+    // Refetch fresh data from DB to guarantee UI is in sync
+    const { data } = await supabase.from('daily_logs').select('*').eq('id', log!.id).single()
     setLog(data)
-    await syncConsumed(data, newAdj, quickAdds)
+    if (data) await syncConsumed(data, newAdj, quickAdds)
   }
 
   async function saveMealMultipliers(key: MealKey, multipliers: Record<number, number>, adjusted: Macro) {
