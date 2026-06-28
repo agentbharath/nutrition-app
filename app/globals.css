@@ -1,0 +1,25 @@
+@import "tailwindcss";
+
+:root {
+  --green: #10B981;
+  --amber: #F59E0B;
+  --red: #EF4444;
+  --card: #141414;
+  --border: #222222;
+  --muted: #666666;
+}
+
+* { box-sizing: border-box; }
+body { -webkit-font-smoothing: antialiased; }
+
+.progress-bar {
+  height: 6px;
+  border-radius: 9999px;
+  background: #222;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 9999px;
+  transition: width 0.5s ease;
+}
