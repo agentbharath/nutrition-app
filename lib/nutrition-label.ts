@@ -12,6 +12,7 @@ interface ExtractedValue {
   value?: number
   direct: boolean
   inferred?: boolean
+  untrusted?: boolean
 }
 
 function cleanText(text: string) {
@@ -58,20 +59,21 @@ function findMacro(text: string, label: RegExp, unit: 'g' | 'mg', max: number): 
   const unitPattern = unit === 'mg' ? 'm\\s*g|mg' : 'g'
   const labelPattern = `(?:${label.source})`
   const numberPattern = '([0-9OoGg][0-9OoGg,.]{0,5})'
+  let sawLabel = false
 
   for (const line of normalized.split('\n')) {
     if (!label.test(line)) continue
     label.lastIndex = 0
+    sawLabel = true
     const withUnit = line.match(new RegExp(`${numberPattern}\\s*(?:${unitPattern})`, 'i'))
-    const afterLabel = line.match(new RegExp(`${labelPattern}\\D{0,24}${numberPattern}`, 'i'))
     values.push(cleanNumber(withUnit?.[1] || ''))
-    values.push(cleanNumber(afterLabel?.[1] || ''))
   }
 
-  const fullMatch = normalized.match(new RegExp(`${labelPattern}\\D{0,28}${numberPattern}\\s*(?:${unitPattern})?`, 'i'))
+  const fullMatch = normalized.match(new RegExp(`${labelPattern}\\D{0,28}${numberPattern}\\s*(?:${unitPattern})`, 'i'))
+  if (fullMatch) sawLabel = true
   values.push(cleanNumber(fullMatch?.[1] || ''))
   const value = firstReasonable(values, max)
-  return { value, direct: value !== undefined }
+  return { value, direct: value !== undefined, untrusted: sawLabel && value === undefined }
 }
 
 function confidenceFromEvidence(
@@ -115,6 +117,7 @@ function confidenceFromEvidence(
   }
 
   if (directRequired < required.length) warnings.push('One or more required fields were not directly found.')
+  if (fields.fiber.untrusted) warnings.push('Fiber was mentioned, but OCR did not produce a trustworthy gram value.')
 
   if (
     fields.calories.direct &&
@@ -123,13 +126,14 @@ function confidenceFromEvidence(
     fields.carbs.direct &&
     fields.fat.direct &&
     canCheckCalories &&
+    !fields.fiber.untrusted &&
     warnings.length === 0
   ) {
     confidence = Math.max(confidence, 99)
   }
 
   return {
-    confidence: Math.max(0, Math.min(99, Math.round(confidence))),
+    confidence: Math.max(0, Math.min(warnings.length > 0 ? 98 : 99, Math.round(confidence))),
     warnings,
   }
 }
