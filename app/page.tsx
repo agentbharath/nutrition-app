@@ -10,7 +10,9 @@ import BreakfastOverride from '@/components/BreakfastOverride'
 import QuickAdd from '@/components/QuickAdd'
 import Link from 'next/link'
 
-function getTodayDate() { return new Date().toISOString().split('T')[0] }
+function getTodayDate() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+}
 function getGreeting() {
   const h = new Date().getHours()
   if (h < 12) return 'Good morning'

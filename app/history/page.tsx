@@ -31,10 +31,10 @@ export default function HistoryPage() {
 
   function formatDate(dateStr: string) {
     const d = new Date(dateStr + 'T12:00:00')
-    const today = new Date().toISOString().split('T')[0]
-    const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0]
-    if (dateStr === today) return 'Today'
-    if (dateStr === yesterday) return 'Yesterday'
+    const todayPST = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+    const yesterdayPST = new Date(Date.now() - 86400000).toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+    if (dateStr === todayPST) return 'Today'
+    if (dateStr === yesterdayPST) return 'Yesterday'
     return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
   }
 
