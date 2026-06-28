@@ -36,6 +36,7 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
   const [sodium, setSodium] = useState('')
   const [carbs, setCarbs] = useState('')
   const [fiber, setFiber] = useState('')
+  const [servings, setServings] = useState('1')
   const [ocrStatus, setOcrStatus] = useState('')
   const [ocrProgress, setOcrProgress] = useState(0)
   const [ocrText, setOcrText] = useState('')
@@ -43,17 +44,23 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
   const [scanWarnings, setScanWarnings] = useState<string[]>([])
   const [valuesVerified, setValuesVerified] = useState(false)
   const scanNeedsVerification = mode === 'scan' && scanConfidence !== null && scanConfidence < 99 && !valuesVerified
+  const servingCount = Math.max(0, Number(servings) || 0)
+
+  function rounded(value: number) {
+    return Math.round(value * 10) / 10
+  }
 
   function handleCustomSave() {
-    if (!name || !cal || scanNeedsVerification) return
+    if (!name || !cal || servingCount <= 0 || scanNeedsVerification) return
+    const suffix = servingCount === 1 ? '' : ` (${servingCount} servings)`
     onAdd({
-      name,
+      name: `${name}${suffix}`,
       emoji: mode === 'scan' ? '🏷️' : '➕',
-      cal: Number(cal),
-      protein: Number(protein) || 0,
-      sodium: Number(sodium) || 0,
-      carbs: Number(carbs) || 0,
-      fiber: Number(fiber) || 0,
+      cal: Math.round(Number(cal) * servingCount),
+      protein: rounded((Number(protein) || 0) * servingCount),
+      sodium: Math.round((Number(sodium) || 0) * servingCount),
+      carbs: rounded((Number(carbs) || 0) * servingCount),
+      fiber: rounded((Number(fiber) || 0) * servingCount),
     })
   }
 
@@ -194,13 +201,41 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
             )}
 
             <div className="space-y-3 mb-4">
+              <div>
+                <label className="text-xs t-muted uppercase tracking-wider">Servings consumed</label>
+                <div className="flex items-center gap-2 mt-1">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.25"
+                    value={servings}
+                    onChange={e => setServings(e.target.value)}
+                    placeholder="1"
+                    className="flex-1 t-card2 border t-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50 t-text placeholder-gray-600"
+                  />
+                  <span className="t-muted text-sm w-8">x</span>
+                </div>
+                <div className="grid grid-cols-4 gap-1.5 mt-2">
+                  {['0.5', '1', '1.5', '2'].map((value) => (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() => setServings(value)}
+                      className={`rounded-lg py-1.5 text-xs font-semibold ${servings === value ? 'btn-confirm' : 'btn-secondary'}`}
+                    >
+                      {value}x
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {[
                 { label: 'What did you have?', key: 'name', val: name, set: setName, placeholder: 'e.g. Banana', unit: '' },
-                { label: 'Calories', key: 'cal', val: cal, set: setCal, placeholder: 'e.g. 105', unit: 'kcal' },
-                { label: 'Protein', key: 'protein', val: protein, set: setProtein, placeholder: 'e.g. 1', unit: 'g' },
-                { label: 'Sodium', key: 'sodium', val: sodium, set: setSodium, placeholder: 'e.g. 0', unit: 'mg' },
-                { label: 'Carbs', key: 'carbs', val: carbs, set: setCarbs, placeholder: 'e.g. 27', unit: 'g' },
-                { label: 'Fiber', key: 'fiber', val: fiber, set: setFiber, placeholder: 'e.g. 3', unit: 'g' },
+                { label: 'Calories per serving', key: 'cal', val: cal, set: setCal, placeholder: 'e.g. 105', unit: 'kcal' },
+                { label: 'Protein per serving', key: 'protein', val: protein, set: setProtein, placeholder: 'e.g. 1', unit: 'g' },
+                { label: 'Sodium per serving', key: 'sodium', val: sodium, set: setSodium, placeholder: 'e.g. 0', unit: 'mg' },
+                { label: 'Carbs per serving', key: 'carbs', val: carbs, set: setCarbs, placeholder: 'e.g. 27', unit: 'g' },
+                { label: 'Fiber per serving', key: 'fiber', val: fiber, set: setFiber, placeholder: 'e.g. 3', unit: 'g' },
               ].map(({ label, key, val, set, placeholder, unit }) => (
                 <div key={key}>
                   <label className="text-xs t-muted uppercase tracking-wider">{label}</label>
@@ -217,9 +252,21 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
                 </div>
               ))}
             </div>
+            {name && cal && servingCount > 0 && (
+              <div className="rounded-xl t-card2 p-3 mb-3">
+                <p className="text-xs t-muted uppercase tracking-wider mb-1">Totals added</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="macro-pill rounded-lg px-2 py-1 text-xs font-medium">{Math.round(Number(cal) * servingCount)} cal</span>
+                  <span className="text-xs text-blue-400 rounded-lg px-2 py-1" style={{ background: 'rgba(59,130,246,0.10)' }}>{rounded((Number(protein) || 0) * servingCount)}g P</span>
+                  <span className="text-xs text-amber-400 rounded-lg px-2 py-1" style={{ background: 'rgba(245,158,11,0.10)' }}>{Math.round((Number(sodium) || 0) * servingCount)}mg Na</span>
+                  <span className="text-xs text-pink-400 rounded-lg px-2 py-1" style={{ background: 'rgba(236,72,153,0.10)' }}>{rounded((Number(carbs) || 0) * servingCount)}g C</span>
+                  <span className="text-xs text-purple-400 rounded-lg px-2 py-1" style={{ background: 'rgba(139,92,246,0.10)' }}>{rounded((Number(fiber) || 0) * servingCount)}g F</span>
+                </div>
+              </div>
+            )}
             <button
               onClick={handleCustomSave}
-              disabled={!name || !cal || scanNeedsVerification}
+              disabled={!name || !cal || servingCount <= 0 || scanNeedsVerification}
               className="w-full bg-[var(--accent)] disabled:macro-pill disabled:t-muted text-black font-bold rounded-xl py-3 text-sm  transition-colors mb-2"
             >
               {scanNeedsVerification ? 'Verify values first' : 'Add to Today'}
