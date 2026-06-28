@@ -48,6 +48,7 @@ export default function Home() {
       date: today, day_type: dayType, gym_day: gymDay,
       breakfast_confirmed: true, breakfast_override: false,
       lunch_confirmed: false, dinner_confirmed: false,
+      shake_confirmed: false, vita_coco_confirmed: false,
       cal_total: totals.cal,
       protein_total: totals.protein,
       sodium_total: totals.sodium,
@@ -75,6 +76,17 @@ export default function Home() {
     setShowQuickAdd(false)
   }
 
+  // Confirm shake — only once, tracked in daily_logs
+  async function confirmShake() {
+    if (log?.shake_confirmed) return
+    await updateLog({ shake_confirmed: true })
+  }
+
+  async function confirmVitaCoco() {
+    if (log?.vita_coco_confirmed) return
+    await updateLog({ vita_coco_confirmed: true })
+  }
+
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
@@ -85,9 +97,10 @@ export default function Home() {
   const dayLabel = log ? DAY_TYPE_OPTIONS.find(d => d.value === log.day_type) : null
   const swapOptions = showSwap === 'dinner' && log ? (SWAP_OPTIONS[`${log.day_type}_dinner_${log.gym_day ? 'gym' : 'rest'}`] || SWAP_OPTIONS[`${log.day_type}_dinner`] || []) : []
 
-  // Compute consumed
+  // Compute consumed based on confirmed meals only
   const consumed = { cal: 0, protein: 0, sodium: 0, fiber: 0, carbs: 0 }
   if (log && meals) {
+    // Breakfast
     if (log.breakfast_confirmed) {
       if (log.breakfast_override) {
         consumed.cal += log.breakfast_override_cal || 0
@@ -98,15 +111,27 @@ export default function Home() {
         consumed.cal += b.cal; consumed.protein += b.protein; consumed.sodium += b.sodium; consumed.fiber += b.fiber; consumed.carbs += b.carbs
       }
     }
+    // Lunch
     if (log.lunch_confirmed && meals.lunch) {
       const l = meals.lunch.totals
       consumed.cal += l.cal; consumed.protein += l.protein; consumed.sodium += l.sodium; consumed.fiber += l.fiber; consumed.carbs += l.carbs
     }
+    // Shake — tracked via shake_confirmed, not quick_adds
+    if ((log as any).shake_confirmed && meals.shake) {
+      const s = meals.shake.totals
+      consumed.cal += s.cal; consumed.protein += s.protein; consumed.sodium += s.sodium; consumed.fiber += s.fiber; consumed.carbs += s.carbs
+    }
+    // Vita Coco — tracked via vita_coco_confirmed
+    if ((log as any).vita_coco_confirmed && meals.vitaCoco) {
+      const v = meals.vitaCoco.totals
+      consumed.cal += v.cal; consumed.protein += v.protein; consumed.sodium += v.sodium; consumed.fiber += v.fiber; consumed.carbs += v.carbs
+    }
+    // Dinner
     if (log.dinner_confirmed && meals.dinner) {
       const d = meals.dinner.totals
       consumed.cal += d.cal; consumed.protein += d.protein; consumed.sodium += d.sodium; consumed.fiber += d.fiber; consumed.carbs += d.carbs
     }
-    // Quick adds
+    // Quick adds (banana, extras etc — NOT Fairlife)
     quickAdds.forEach(qa => {
       consumed.cal += qa.cal; consumed.protein += qa.protein; consumed.sodium += qa.sodium
       consumed.fiber += qa.fiber; consumed.carbs += qa.carbs
@@ -174,7 +199,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Quick adds display */}
           {quickAdds.length > 0 && (
             <div className="mt-3 pt-3 border-t border-[#222]">
               <p className="text-xs text-gray-600 mb-2">Quick adds today:</p>
@@ -208,8 +232,8 @@ export default function Home() {
           <p className="text-xs text-gray-500 uppercase tracking-wider mt-2">Today&apos;s Meals</p>
           <MealCard meal={meals.breakfast} label="Breakfast" emoji="🥣" confirmed={log.breakfast_confirmed} onConfirm={() => {}} onOverride={() => setShowBreakfastOverride(true)} isOverride={log.breakfast_override} />
           {meals.lunch && <MealCard meal={meals.lunch} label="Lunch" emoji="🥗" confirmed={log.lunch_confirmed} onConfirm={() => updateLog({ lunch_confirmed: true })} />}
-          {meals.shake && <MealCard meal={meals.shake} label="Protein Shake" emoji="🥛" confirmed={false} onConfirm={async () => { await supabase.from('quick_adds').insert({ date: today, name: 'Fairlife Core Power', emoji: '🥛', cal: 230, protein: 42, sodium: 280, carbs: 12, fiber: 0 }); setQuickAdds(prev => [...prev, { name: 'Fairlife Core Power', emoji: '🥛', cal: 230, protein: 42, sodium: 280, carbs: 12, fiber: 0 }]) }} />}
-          {meals.vitaCoco && <MealCard meal={meals.vitaCoco} label="Post-Gym Electrolytes" emoji="🥥" confirmed={false} onConfirm={async () => { await supabase.from('quick_adds').insert({ date: today, name: 'Vita Coco 500ml', emoji: '🥥', cal: 90, protein: 0, sodium: 30, carbs: 23, fiber: 0 }); setQuickAdds(prev => [...prev, { name: 'Vita Coco 500ml', emoji: '🥥', cal: 90, protein: 0, sodium: 30, carbs: 23, fiber: 0 }]) }} />}
+          {meals.shake && <MealCard meal={meals.shake} label="Protein Shake" emoji="🥛" confirmed={(log as any).shake_confirmed || false} onConfirm={confirmShake} />}
+          {meals.vitaCoco && <MealCard meal={meals.vitaCoco} label="Post-Gym Electrolytes" emoji="🥥" confirmed={(log as any).vita_coco_confirmed || false} onConfirm={confirmVitaCoco} />}
           <MealCard meal={meals.dinner} label="Dinner" emoji="🍽️" confirmed={log.dinner_confirmed} onConfirm={() => updateLog({ dinner_confirmed: true })} onSwap={swapOptions.length > 0 ? () => setShowSwap('dinner') : undefined} swappable={swapOptions.length > 0} />
           {meals.snack && <MealCard meal={meals.snack} label="Snack" emoji="🍊" confirmed={false} onConfirm={() => {}} />}
         </div>

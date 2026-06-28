@@ -19,6 +19,8 @@ export interface DailyLog {
   breakfast_override_sodium?: number
   lunch_confirmed: boolean
   dinner_confirmed: boolean
+  shake_confirmed?: boolean
+  vita_coco_confirmed?: boolean
   lunch_swapped_to?: string
   dinner_swapped_to?: string
   cal_total: number
