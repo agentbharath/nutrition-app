@@ -9,14 +9,21 @@ export default function SettingsPage() {
   const [notifStatus, setNotifStatus] = useState<'unknown'|'granted'|'denied'|'unsupported'>('unknown')
   const [subscribed, setSubscribed] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [testLoading, setTestLoading] = useState(false)
+  const [testStatus, setTestStatus] = useState('')
   const [resetLoading, setResetLoading] = useState(false)
   const [resetDone, setResetDone] = useState(false)
 
   useEffect(() => {
-    if (!('Notification' in window)) { setNotifStatus('unsupported'); return }
-    setNotifStatus(Notification.permission as 'granted'|'denied')
-    if ('serviceWorker' in navigator)
-      navigator.serviceWorker.ready.then(r => r.pushManager.getSubscription().then(s => setSubscribed(!!s)))
+    void Promise.resolve().then(async () => {
+      if (!('Notification' in window)) { setNotifStatus('unsupported'); return }
+      setNotifStatus(Notification.permission as 'granted'|'denied')
+      if ('serviceWorker' in navigator) {
+        const r = await navigator.serviceWorker.ready
+        const s = await r.pushManager.getSubscription()
+        setSubscribed(!!s)
+      }
+    })
   }, [])
 
   async function enableNotifications() {
@@ -31,7 +38,7 @@ export default function SettingsPage() {
       if (ex) await ex.unsubscribe()
       const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!) })
       const j = sub.toJSON()
-      await supabase.from('push_subscriptions').upsert({ endpoint: j.endpoint, auth: (j.keys as any)?.auth, p256dh: (j.keys as any)?.p256dh }, { onConflict: 'endpoint' })
+      await supabase.from('push_subscriptions').upsert({ endpoint: j.endpoint, auth: j.keys?.auth, p256dh: j.keys?.p256dh }, { onConflict: 'endpoint' })
       setSubscribed(true)
     } catch(e) { console.error(e) }
     setLoading(false)
@@ -41,6 +48,33 @@ export default function SettingsPage() {
     const r = await navigator.serviceWorker.ready
     const s = await r.pushManager.getSubscription()
     if (s) { await supabase.from('push_subscriptions').delete().eq('endpoint', s.endpoint); await s.unsubscribe(); setSubscribed(false) }
+  }
+
+  async function sendTestNotification() {
+    setTestLoading(true)
+    setTestStatus('')
+    try {
+      const r = await navigator.serviceWorker.ready
+      const s = await r.pushManager.getSubscription()
+      if (!s) {
+        setSubscribed(false)
+        setTestStatus('No active subscription. Enable notifications again.')
+        return
+      }
+
+      const res = await fetch('/api/notify/test', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint: s.endpoint }),
+      })
+      const data = await res.json()
+      setTestStatus(res.ok ? 'Test sent. Check this device.' : data.error || 'Could not send test.')
+    } catch (e) {
+      console.error(e)
+      setTestStatus('Could not send test.')
+    } finally {
+      setTestLoading(false)
+    }
   }
 
   async function resetToday() {
@@ -71,7 +105,6 @@ export default function SettingsPage() {
           <div className="grid grid-cols-2 gap-2.5">
             {THEMES.map((t) => {
               const active = theme.name === t.name
-              const isLight = ['light','matcha','coastal','salt'].includes(t.name)
               return (
                 <button key={t.name} onClick={() => setTheme(t.name as ThemeName)}
                   className="rounded-xl overflow-hidden transition-all text-left"
@@ -116,7 +149,7 @@ export default function SettingsPage() {
                 {/* NOTIFICATIONS */}
         <div className="t-card rounded-2xl p-4">
           <p className="font-semibold text-sm t-text mb-0.5">Push Notifications</p>
-          <p className="text-xs t-muted mb-3">12 PM lunch • 6 PM dinner • PST daily</p>
+          <p className="text-xs t-muted mb-3">12 PM lunch • 6 PM dinner • Pacific time daily</p>
           {notifStatus === 'unsupported' && (
             <div className="rounded-xl p-3" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
               <p className="text-xs" style={{ color: 'var(--amber)' }}>⚠️ Install app to home screen first, then enable notifications here</p>
@@ -137,12 +170,20 @@ export default function SettingsPage() {
           )}
           {subscribed && (
             <div className="mt-3 space-y-1.5">
-              {['12:00 PM PST — Lunch reminder', '6:00 PM PST — Dinner reminder'].map(t => (
+              {['12:00 PM PT — Lunch reminder', '6:00 PM PT — Dinner reminder'].map(t => (
                 <div key={t} className="flex justify-between text-xs">
                   <span className="t-muted">{t}</span>
                   <span className="t-accent">✓ Active</span>
                 </div>
               ))}
+              <button
+                onClick={sendTestNotification}
+                disabled={testLoading}
+                className="mt-2 w-full btn-secondary disabled:opacity-50 rounded-xl py-2.5 text-xs font-semibold"
+              >
+                {testLoading ? 'Sending test...' : 'Send test notification'}
+              </button>
+              {testStatus && <p className="text-xs t-muted">{testStatus}</p>}
             </div>
           )}
         </div>
@@ -193,7 +234,7 @@ export default function SettingsPage() {
         {/* RESET */}
         <div className="rounded-2xl p-4 t-card" style={{ borderColor: 'rgba(239,68,68,0.2)' }}>
           <p className="font-semibold text-sm mb-0.5" style={{ color: 'var(--red)' }}>Reset Today</p>
-          <p className="text-xs t-muted mb-3">Clears today's log and quick adds. Cannot undo.</p>
+          <p className="text-xs t-muted mb-3">Clears today&apos;s log and quick adds. Cannot undo.</p>
           <button onClick={resetToday} disabled={resetLoading || resetDone}
             className="w-full py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-60"
             style={{ border: '1px solid rgba(239,68,68,0.3)', color: 'var(--red)' }}>
