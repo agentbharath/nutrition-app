@@ -16,9 +16,12 @@ export default function HistoryPage() {
 
   function getStatus(log: DailyLog) {
     const issues = []
-    if (log.sodium_total > TARGETS.sodium) issues.push('Na over')
-    if (log.protein_total < TARGETS.protein) issues.push('P low')
-    if (log.cal_total > 2100) issues.push('Cal high')
+    const na = log.sodium_consumed ?? log.sodium_total
+    const pro = log.protein_consumed ?? log.protein_total
+    const cal = log.cal_consumed ?? log.cal_total
+    if (na > TARGETS.sodium) issues.push('Na over')
+    if (pro < TARGETS.protein) issues.push('P low')
+    if (cal > 2100) issues.push('Cal high')
     return issues
   }
 
@@ -90,11 +93,11 @@ export default function HistoryPage() {
                   <div className="border-t border-[#222] p-4">
                     <div className="grid grid-cols-5 gap-2 text-center">
                       {[
-                        { label: 'Cal', value: log.cal_total, target: TARGETS.cal, unit: '' },
-                        { label: 'Protein', value: log.protein_total, target: TARGETS.protein, unit: 'g' },
-                        { label: 'Sodium', value: log.sodium_total, target: TARGETS.sodium, unit: 'mg' },
-                        { label: 'Fiber', value: log.fiber_total, target: TARGETS.fiber, unit: 'g' },
-                        { label: 'Carbs', value: log.carbs_total, target: TARGETS.carbs, unit: 'g' },
+                        { label: 'Cal', value: log.cal_consumed ?? log.cal_total, target: TARGETS.cal, unit: '' },
+                        { label: 'Protein', value: log.protein_consumed ?? log.protein_total, target: TARGETS.protein, unit: 'g' },
+                        { label: 'Sodium', value: log.sodium_consumed ?? log.sodium_total, target: TARGETS.sodium, unit: 'mg' },
+                        { label: 'Fiber', value: log.fiber_consumed ?? log.fiber_total, target: TARGETS.fiber, unit: 'g' },
+                        { label: 'Carbs', value: log.carbs_consumed ?? log.carbs_total, target: TARGETS.carbs, unit: 'g' },
                       ].map(({ label, value, target, unit }) => {
                         const pct = (Number(value) / target) * 100
                         const color = label === 'Sodium'

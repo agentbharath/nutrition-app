@@ -72,14 +72,46 @@ export default function Home() {
     setLog(data)
   }
 
+  async function syncConsumed(updatedLog: DailyLog, updatedAdjusted: Partial<Record<MealKey, Macro>>, updatedQuickAdds: QuickItem[]) {
+    if (!meals) return
+    const c = { cal: 0, protein: 0, sodium: 0, fiber: 0, carbs: 0 }
+    const add = (m: Macro) => { c.cal += m.cal; c.protein += m.protein; c.sodium += m.sodium; c.fiber += m.fiber; c.carbs += m.carbs }
+    const eff = (key: MealKey, def: Macro) => updatedAdjusted[key] || def
+
+    if (updatedLog.breakfast_confirmed) {
+      if (updatedLog.breakfast_override) {
+        c.cal += updatedLog.breakfast_override_cal || 0
+        c.protein += updatedLog.breakfast_override_protein || 0
+        c.sodium += updatedLog.breakfast_override_sodium || 0
+      } else add(eff('breakfast', meals.breakfast.totals))
+    }
+    if (updatedLog.lunch_confirmed && meals.lunch) add(eff('lunch', meals.lunch.totals))
+    if ((updatedLog as any).shake_confirmed && meals.shake) add(eff('shake', meals.shake.totals))
+    if ((updatedLog as any).vita_coco_confirmed && meals.vitaCoco) add(eff('vita_coco', meals.vitaCoco.totals))
+    if (updatedLog.dinner_confirmed && meals.dinner) add(eff('dinner', meals.dinner.totals))
+    if ((updatedLog as any).snack_confirmed && meals.snack) add(eff('snack', meals.snack.totals))
+    updatedQuickAdds.forEach(qa => { c.cal += qa.cal; c.protein += qa.protein; c.sodium += qa.sodium; c.fiber += qa.fiber; c.carbs += qa.carbs })
+
+    await supabase.from('daily_logs').update({
+      cal_consumed: Math.round(c.cal),
+      protein_consumed: Math.round(c.protein * 10) / 10,
+      sodium_consumed: Math.round(c.sodium),
+      fiber_consumed: Math.round(c.fiber * 10) / 10,
+      carbs_consumed: Math.round(c.carbs * 10) / 10,
+    }).eq('id', updatedLog.id)
+  }
+
   async function confirmMeal(key: MealKey, adjusted?: Macro) {
     const fieldMap: Record<MealKey, string> = {
       breakfast: 'breakfast_confirmed', lunch: 'lunch_confirmed',
       shake: 'shake_confirmed', vita_coco: 'vita_coco_confirmed',
       dinner: 'dinner_confirmed', snack: 'snack_confirmed',
     }
-    await updateLog({ [fieldMap[key]]: true } as any)
-    if (adjusted) setAdjustedTotals(prev => ({ ...prev, [key]: adjusted }))
+    const { data } = await supabase.from('daily_logs').update({ [fieldMap[key]]: true } as any).eq('id', log!.id).select().single()
+    const newAdj = adjusted ? { ...adjustedTotals, [key]: adjusted } : adjustedTotals
+    if (adjusted) setAdjustedTotals(newAdj)
+    setLog(data)
+    await syncConsumed(data, newAdj, quickAdds)
   }
 
   async function undoMeal(key: MealKey) {
@@ -88,8 +120,12 @@ export default function Home() {
       shake: 'shake_confirmed', vita_coco: 'vita_coco_confirmed',
       dinner: 'dinner_confirmed', snack: 'snack_confirmed',
     }
-    await updateLog({ [fieldMap[key]]: false } as any)
-    setAdjustedTotals(prev => { const n = { ...prev }; delete n[key]; return n })
+    const { data } = await supabase.from('daily_logs').update({ [fieldMap[key]]: false } as any).eq('id', log!.id).select().single()
+    const newAdj = { ...adjustedTotals }
+    delete newAdj[key]
+    setAdjustedTotals(newAdj)
+    setLog(data)
+    await syncConsumed(data, newAdj, quickAdds)
   }
 
   async function saveMealMultipliers(key: MealKey, multipliers: Record<number, number>, adjusted: Macro) {
@@ -107,8 +143,10 @@ export default function Home() {
 
   async function handleQuickAdd(item: QuickItem) {
     await supabase.from('quick_adds').insert({ date: today, ...item })
-    setQuickAdds(prev => [...prev, item])
+    const newQA = [...quickAdds, item]
+    setQuickAdds(newQA)
     setShowQuickAdd(false)
+    if (log) await syncConsumed(log, adjustedTotals, newQA)
   }
 
   if (loading) return (

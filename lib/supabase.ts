@@ -29,5 +29,10 @@ export interface DailyLog {
   sodium_total: number
   fiber_total: number
   carbs_total: number
+  cal_consumed?: number
+  protein_consumed?: number
+  sodium_consumed?: number
+  fiber_consumed?: number
+  carbs_consumed?: number
   notes?: string
 }
