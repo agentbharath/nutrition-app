@@ -39,9 +39,13 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
   const [ocrStatus, setOcrStatus] = useState('')
   const [ocrProgress, setOcrProgress] = useState(0)
   const [ocrText, setOcrText] = useState('')
+  const [scanConfidence, setScanConfidence] = useState<number | null>(null)
+  const [scanWarnings, setScanWarnings] = useState<string[]>([])
+  const [valuesVerified, setValuesVerified] = useState(false)
+  const scanNeedsVerification = mode === 'scan' && scanConfidence !== null && scanConfidence < 99 && !valuesVerified
 
   function handleCustomSave() {
-    if (!name || !cal) return
+    if (!name || !cal || scanNeedsVerification) return
     onAdd({
       name,
       emoji: mode === 'scan' ? '🏷️' : '➕',
@@ -59,6 +63,9 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
     setOcrStatus('Preparing OCR')
     setOcrProgress(0)
     setOcrText('')
+    setScanConfidence(null)
+    setScanWarnings([])
+    setValuesVerified(false)
 
     try {
       const { createWorker } = await import('tesseract.js')
@@ -78,7 +85,7 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
       await worker.terminate()
 
       const text = result.data.text
-      const parsed = parseNutritionLabel(text)
+      const parsed = parseNutritionLabel(text, result.data.confidence)
       setOcrText(text.trim())
       setName(name || 'Scanned nutrition label')
       setCal(parsed.cal !== undefined ? String(parsed.cal) : '')
@@ -86,12 +93,16 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
       setSodium(parsed.sodium !== undefined ? String(parsed.sodium) : '')
       setCarbs(parsed.carbs !== undefined ? String(parsed.carbs) : '')
       setFiber(parsed.fiber !== undefined ? String(parsed.fiber) : '')
-      setOcrStatus('Review extracted values')
+      setScanConfidence(parsed.confidence)
+      setScanWarnings(parsed.warnings)
+      setOcrStatus(parsed.confidence >= 99 ? '99% confidence verified' : 'Review extracted values')
       setOcrProgress(100)
     } catch (error) {
       console.error(error)
       setOcrStatus('Could not read the label. Try a brighter, closer photo.')
       setOcrProgress(0)
+      setScanConfidence(null)
+      setScanWarnings([])
     }
   }
 
@@ -164,6 +175,21 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
                     <p className="text-xs t-muted mt-1">{ocrStatus}{ocrProgress > 0 && ocrProgress < 100 ? ` ${ocrProgress}%` : ''}</p>
                   </div>
                 )}
+                {scanConfidence !== null && (
+                  <div
+                    className="mt-3 rounded-lg p-2 text-xs"
+                    style={{
+                      background: scanConfidence >= 99 ? 'rgba(16,185,129,0.12)' : 'rgba(245,158,11,0.12)',
+                      border: scanConfidence >= 99 ? '1px solid rgba(16,185,129,0.28)' : '1px solid rgba(245,158,11,0.28)',
+                      color: scanConfidence >= 99 ? 'var(--accent-text)' : 'var(--amber)',
+                    }}
+                  >
+                    <p className="font-semibold">{scanConfidence}% extraction confidence</p>
+                    {scanWarnings.map((warning) => (
+                      <p key={warning} className="mt-1">{warning}</p>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
 
@@ -193,11 +219,19 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
             </div>
             <button
               onClick={handleCustomSave}
-              disabled={!name || !cal}
+              disabled={!name || !cal || scanNeedsVerification}
               className="w-full bg-[var(--accent)] disabled:macro-pill disabled:t-muted text-black font-bold rounded-xl py-3 text-sm  transition-colors mb-2"
             >
-              Add to Today
+              {scanNeedsVerification ? 'Verify values first' : 'Add to Today'}
             </button>
+            {mode === 'scan' && scanConfidence !== null && scanConfidence < 99 && (
+              <button
+                onClick={() => setValuesVerified(true)}
+                className={`w-full rounded-xl py-3 text-sm font-semibold mb-2 ${valuesVerified ? 'btn-confirm' : 'btn-secondary'}`}
+              >
+                {valuesVerified ? '✓ Values verified by me' : 'I checked the label values'}
+              </button>
+            )}
             {mode === 'scan' && ocrText && (
               <details className="mb-2 rounded-xl t-card2 p-3">
                 <summary className="text-xs t-muted cursor-pointer">Show OCR text</summary>
