@@ -96,6 +96,62 @@ html { scroll-behavior: smooth; }
 /* ── Ring animation ── */
 circle { transition: stroke-dashoffset 0.6s cubic-bezier(0.4,0,0.2,1); }
 
+/* ── Theme celebration burst ── */
+.theme-celebration {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  pointer-events: none;
+  animation: celebration-fade 1.8s ease-out forwards;
+}
+.theme-celebration-burst {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+}
+.theme-confetti-piece {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-size: 24px;
+  filter: drop-shadow(0 3px 4px rgba(0,0,0,0.20));
+  animation: theme-confetti-pop 1.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation-delay: var(--delay);
+}
+.theme-celebration-card {
+  min-width: 190px;
+  max-width: 260px;
+  text-align: center;
+  border-radius: 16px;
+  padding: 18px 20px;
+  animation: celebration-card-pop 1.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes theme-confetti-pop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.2) rotate(0deg); }
+  18% { opacity: 1; }
+  100% { opacity: 0; transform: translate(calc(-50% + var(--x)), calc(-50% + var(--y))) scale(1.1) rotate(380deg); }
+}
+@keyframes celebration-card-pop {
+  0% { opacity: 0; transform: translateY(18px) scale(0.88); }
+  18% { opacity: 1; transform: translateY(0) scale(1); }
+  78% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-10px) scale(0.96); }
+}
+@keyframes celebration-fade {
+  0%, 82% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .theme-celebration,
+  .theme-confetti-piece,
+  .theme-celebration-card {
+    animation-duration: 0.01ms;
+  }
+}
+
 /* ── Default CSS variable values (dark theme) ── */
 :root {
   --bg: #0A0A0A;

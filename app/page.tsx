@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { supabase, DayType, DailyLog } from '@/lib/supabase'
 import { DAY_TYPE_OPTIONS, getDayMeals, calculateDayTotals, TARGETS, SWAP_OPTIONS, Macro, calcAdjustedTotals } from '@/lib/meals'
 import ProgressRing from '@/components/ProgressRing'
@@ -8,6 +8,8 @@ import DaySelector from '@/components/DaySelector'
 import SwapModal from '@/components/SwapModal'
 import BreakfastOverride from '@/components/BreakfastOverride'
 import QuickAdd from '@/components/QuickAdd'
+import ThemeCelebration from '@/components/ThemeCelebration'
+import { useTheme } from '@/lib/theme'
 import Link from 'next/link'
 
 function getTodayDate() {
@@ -21,10 +23,49 @@ function getGreeting() {
 }
 
 interface QuickItem { id?: string; name: string; emoji: string; cal: number; protein: number; sodium: number; carbs: number; fiber: number }
+interface StoredQuickItem extends QuickItem { created_at?: string }
 
 type MealKey = 'breakfast' | 'lunch' | 'shake' | 'vita_coco' | 'dinner' | 'snack'
+type CelebrationMetric = 'cal' | 'protein' | 'fiber' | 'carbs'
+
+function quickAddSignature(item: QuickItem) {
+  return [
+    item.name.trim().toLowerCase(),
+    item.emoji,
+    Math.round(item.cal * 10) / 10,
+    Math.round(item.protein * 10) / 10,
+    Math.round(item.sodium),
+    Math.round(item.carbs * 10) / 10,
+    Math.round(item.fiber * 10) / 10,
+  ].join('|')
+}
+
+function dedupeQuickAdds(items: StoredQuickItem[]) {
+  const seen = new Map<string, StoredQuickItem>()
+  const unique: StoredQuickItem[] = []
+  const duplicateIds: string[] = []
+
+  items.forEach((item) => {
+    const signature = quickAddSignature(item)
+    const previous = seen.get(signature)
+    const itemTime = item.created_at ? new Date(item.created_at).getTime() : 0
+    const previousTime = previous?.created_at ? new Date(previous.created_at).getTime() : 0
+    const isRetryDuplicate = Boolean(previous && itemTime && previousTime && Math.abs(itemTime - previousTime) <= 15000)
+
+    if (isRetryDuplicate) {
+      if (item.id) duplicateIds.push(item.id)
+      return
+    }
+
+    seen.set(signature, item)
+    unique.push(item)
+  })
+
+  return { unique, duplicateIds }
+}
 
 export default function Home() {
+  const { theme } = useTheme()
   const [log, setLog] = useState<DailyLog | null>(null)
   const [quickAdds, setQuickAdds] = useState<QuickItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -33,6 +74,10 @@ export default function Home() {
   const [showBreakfastOverride, setShowBreakfastOverride] = useState(false)
   const [showQuickAdd, setShowQuickAdd] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [celebration, setCelebration] = useState<CelebrationMetric | null>(null)
+  const quickAddInFlight = useRef(new Set<string>())
+  const completedRings = useRef<Partial<Record<CelebrationMetric, boolean>>>({})
+  const hasTrackedRingState = useRef(false)
   // Per-meal adjusted totals (from quantity editing)
   const [adjustedTotals, setAdjustedTotals] = useState<Partial<Record<MealKey, Macro>>>({})
   // Per-meal multipliers (persisted)
@@ -68,7 +113,11 @@ export default function Home() {
     }
 
     const { data: qa } = await supabase.from('quick_adds').select('*').eq('date', today)
-    setQuickAdds(qa || [])
+    const { unique, duplicateIds } = dedupeQuickAdds((qa || []) as StoredQuickItem[])
+    setQuickAdds(unique)
+    if (duplicateIds.length > 0) {
+      await supabase.from('quick_adds').delete().in('id', duplicateIds)
+    }
     setLoading(false)
   }, [today])
 
@@ -169,11 +218,19 @@ export default function Home() {
   }
 
   async function handleQuickAdd(item: QuickItem) {
-    const { data } = await supabase.from('quick_adds').insert({ date: today, ...item }).select().single()
-    const newQA = [...quickAdds, { ...item, id: data?.id }]
-    setQuickAdds(newQA)
-    setShowQuickAdd(false)
-    if (log) await syncConsumed(log, adjustedTotals, newQA)
+    const signature = quickAddSignature(item)
+    if (quickAddInFlight.current.has(signature)) return
+
+    quickAddInFlight.current.add(signature)
+    try {
+      const { data } = await supabase.from('quick_adds').insert({ date: today, ...item }).select().single()
+      const newQA = [...quickAdds, { ...item, id: data?.id }]
+      setQuickAdds(newQA)
+      setShowQuickAdd(false)
+      if (log) await syncConsumed(log, adjustedTotals, newQA)
+    } finally {
+      quickAddInFlight.current.delete(signature)
+    }
   }
 
   async function removeQuickAdd(id: string) {
@@ -182,12 +239,6 @@ export default function Home() {
     setQuickAdds(newQA)
     if (log) await syncConsumed(log, adjustedTotals, newQA)
   }
-
-  if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
-    </div>
-  )
 
   const meals = log ? getDayMeals(log.day_type as DayType, log.gym_day) : null
   const dayLabel = log ? DAY_TYPE_OPTIONS.find(d => d.value === log.day_type) : null
@@ -219,6 +270,35 @@ export default function Home() {
     if ((log as any).snack_confirmed && meals.snack) add(getEffective('snack', meals.snack.totals))
     quickAdds.forEach(qa => { consumed.cal += qa.cal; consumed.protein += qa.protein; consumed.sodium += qa.sodium; consumed.fiber += qa.fiber; consumed.carbs += qa.carbs })
   }
+
+  const ringCompletion: Record<CelebrationMetric, boolean> = {
+    cal: consumed.cal >= TARGETS.cal,
+    protein: consumed.protein >= TARGETS.protein,
+    fiber: consumed.fiber >= TARGETS.fiber,
+    carbs: consumed.carbs >= TARGETS.carbs,
+  }
+
+  useEffect(() => {
+    if (loading) return
+
+    if (!hasTrackedRingState.current) {
+      completedRings.current = ringCompletion
+      hasTrackedRingState.current = true
+      return
+    }
+
+    const nextCompleted = (Object.keys(ringCompletion) as CelebrationMetric[]).find(
+      (metric) => ringCompletion[metric] && !completedRings.current[metric],
+    )
+    completedRings.current = ringCompletion
+    if (nextCompleted) setCelebration(nextCompleted)
+  }, [loading, ringCompletion.cal, ringCompletion.protein, ringCompletion.fiber, ringCompletion.carbs])
+
+  if (loading) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
+    </div>
+  )
 
   return (
     <main className="max-w-md mx-auto min-h-screen pb-24 t-bg">
@@ -398,6 +478,13 @@ export default function Home() {
 
       {showDaySelector && <DaySelector onSelect={createLog} onClose={() => setShowDaySelector(false)} saving={saving} />}
       {showSwap && <SwapModal mealType={showSwap} options={swapOptions} onSelect={(id) => applySwap(showSwap, id)} onClose={() => setShowSwap(null)} />}
+      {celebration && (
+        <ThemeCelebration
+          metric={celebration}
+          themeName={theme.name}
+          onDone={() => setCelebration(null)}
+        />
+      )}
       {showBreakfastOverride && (
         <BreakfastOverride
           onSave={async (c, p, s) => { await updateLog({ breakfast_override: true, breakfast_override_cal: c, breakfast_override_protein: p, breakfast_override_sodium: s }); setShowBreakfastOverride(false) }}
