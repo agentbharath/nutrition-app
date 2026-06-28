@@ -54,6 +54,12 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
   const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredient[]>([])
   const [recipeServings, setRecipeServings] = useState('2')
   const [recipeServingsEaten, setRecipeServingsEaten] = useState('1')
+  const [customIngredientName, setCustomIngredientName] = useState('')
+  const [customIngredientCal, setCustomIngredientCal] = useState('')
+  const [customIngredientProtein, setCustomIngredientProtein] = useState('')
+  const [customIngredientSodium, setCustomIngredientSodium] = useState('')
+  const [customIngredientCarbs, setCustomIngredientCarbs] = useState('')
+  const [customIngredientFiber, setCustomIngredientFiber] = useState('')
   const scanNeedsVerification = mode === 'scan' && scanConfidence !== null && scanConfidence < 99 && !valuesVerified
   const servingCount = Math.max(0, Number(servings) || 0)
   const recipeServingCount = Math.max(0, Number(recipeServings) || 0)
@@ -121,6 +127,30 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
   function addRecipeIngredient(ingredient: IngredientNutrition) {
     setRecipeIngredients([...recipeIngredients, { ingredient, grams: '100' }])
     setRecipeQuery('')
+  }
+
+  function addCustomRecipeIngredient() {
+    if (!customIngredientName || !customIngredientCal) return
+
+    const ingredient: IngredientNutrition = {
+      id: `custom-${Date.now()}`,
+      name: customIngredientName,
+      aliases: [customIngredientName],
+      cuisine: 'Custom',
+      cal: Number(customIngredientCal) || 0,
+      protein: Number(customIngredientProtein) || 0,
+      sodium: Number(customIngredientSodium) || 0,
+      carbs: Number(customIngredientCarbs) || 0,
+      fiber: Number(customIngredientFiber) || 0,
+    }
+
+    setRecipeIngredients([...recipeIngredients, { ingredient, grams: '100' }])
+    setCustomIngredientName('')
+    setCustomIngredientCal('')
+    setCustomIngredientProtein('')
+    setCustomIngredientSodium('')
+    setCustomIngredientCarbs('')
+    setCustomIngredientFiber('')
   }
 
   function updateRecipeIngredient(index: number, grams: string) {
@@ -312,6 +342,50 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
                     </button>
                   ))}
                 </div>
+                <details className="mt-2 rounded-xl t-card2 p-3">
+                  <summary className="text-xs t-muted cursor-pointer">Add custom ingredient per 100g</summary>
+                  <div className="mt-3 space-y-2">
+                    <input
+                      type="text"
+                      value={customIngredientName}
+                      onChange={e => setCustomIngredientName(e.target.value)}
+                      placeholder="e.g. cassava flour, achiote paste, labneh"
+                      className="w-full t-card border t-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500/50 t-text placeholder-gray-600"
+                    />
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { label: 'Cal', value: customIngredientCal, set: setCustomIngredientCal, unit: 'kcal' },
+                        { label: 'Protein', value: customIngredientProtein, set: setCustomIngredientProtein, unit: 'g' },
+                        { label: 'Sodium', value: customIngredientSodium, set: setCustomIngredientSodium, unit: 'mg' },
+                        { label: 'Carbs', value: customIngredientCarbs, set: setCustomIngredientCarbs, unit: 'g' },
+                        { label: 'Fiber', value: customIngredientFiber, set: setCustomIngredientFiber, unit: 'g' },
+                      ].map(({ label, value, set, unit }) => (
+                        <label key={label} className="text-[11px] t-muted uppercase tracking-wider">
+                          {label}
+                          <div className="mt-1 flex items-center gap-1">
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.1"
+                              value={value}
+                              onChange={e => set(e.target.value)}
+                              className="w-full t-card border t-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500/50 t-text"
+                            />
+                            <span className="normal-case tracking-normal text-xs t-muted w-8">{unit}</span>
+                          </div>
+                        </label>
+                      ))}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={addCustomRecipeIngredient}
+                      disabled={!customIngredientName || !customIngredientCal}
+                      className="w-full btn-secondary disabled:opacity-50 rounded-lg py-2 text-xs font-semibold"
+                    >
+                      Add custom ingredient
+                    </button>
+                  </div>
+                </details>
               </div>
 
               {recipeIngredients.length > 0 && (
