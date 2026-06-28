@@ -99,10 +99,15 @@ export default function SettingsPage() {
       <div className="px-4 space-y-3">
 
         {/* THEME */}
-        <div className="t-card rounded-2xl p-4">
-          <p className="font-semibold text-sm t-text mb-0.5">Theme</p>
-          <p className="text-xs t-muted mb-4">Choose your vibe</p>
-          <div className="grid grid-cols-2 gap-2.5">
+        <details className="t-card rounded-2xl p-4 group">
+          <summary className="list-none cursor-pointer flex items-center justify-between gap-3">
+            <div>
+              <p className="font-semibold text-sm t-text mb-0.5">Theme</p>
+              <p className="text-xs t-muted">{theme.emoji} {theme.label} active</p>
+            </div>
+            <span className="text-xs t-muted group-open:rotate-180 transition-transform">⌄</span>
+          </summary>
+          <div className="grid grid-cols-2 gap-2.5 mt-4">
             {THEMES.map((t) => {
               const active = theme.name === t.name
               return (
@@ -113,14 +118,11 @@ export default function SettingsPage() {
                     boxShadow: active ? `0 0 0 1px ${t.preview.accent}40, 0 6px 20px ${t.preview.accent}25` : 'none',
                     outline: active ? 'none' : undefined,
                   }}>
-                  {/* App mockup preview */}
                   <div className="p-3 h-20 flex flex-col gap-1.5" style={{ background: t.preview.bg }}>
-                    {/* Header bar */}
                     <div className="flex items-center gap-1.5">
                       <div className="w-2 h-2 rounded-full" style={{ background: t.preview.accent }} />
                       <div className="h-1.5 rounded-full flex-1" style={{ background: t.preview.card, opacity: 0.8 }} />
                     </div>
-                    {/* Card mockup */}
                     <div className="rounded-lg p-1.5 flex-1 flex flex-col gap-1" style={{ background: t.preview.card }}>
                       <div className="h-1.5 w-3/4 rounded-full" style={{ background: t.preview.accent, opacity: 0.7 }} />
                       <div className="flex gap-1 mt-auto">
@@ -130,7 +132,6 @@ export default function SettingsPage() {
                       </div>
                     </div>
                   </div>
-                  {/* Label */}
                   <div className="px-3 py-2 flex items-center justify-between" style={{ background: t.preview.card }}>
                     <div>
                       <p className="text-xs font-semibold leading-tight" style={{ color: active ? t.preview.accent : t.preview.text, opacity: active ? 1 : 0.85 }}>
@@ -143,7 +144,7 @@ export default function SettingsPage() {
               )
             })}
           </div>
-        </div>
+        </details>
 
 
                 {/* NOTIFICATIONS */}

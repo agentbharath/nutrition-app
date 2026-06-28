@@ -1,7 +1,7 @@
 'use client'
 import { createContext, useContext, useEffect, useState } from 'react'
 
-export type ThemeName = 'dark' | 'light' | 'amoled' | 'matcha' | 'sunrise' | 'coastal' | 'fig' | 'salt'
+export type ThemeName = 'dark' | 'light' | 'amoled' | 'cartoon' | 'voyage' | 'arcade' | 'bento' | 'candy' | 'matcha' | 'sunrise' | 'coastal' | 'fig' | 'salt'
 
 export interface Theme {
   name: ThemeName
@@ -46,6 +46,66 @@ export const THEMES: Theme[] = [
       '--accent-border':'rgba(0,229,180,0.20)','--accent-text':'#00E5B4',
       '--red':'#FF4444','--amber':'#FFB300','--blue':'#4488FF','--purple':'#AA88FF','--pink':'#FF55CC',
       '--nav-bg':'rgba(0,0,0,0.97)','--input-bg':'#080808','--pill-bg':'#1A1A1A','--pill-text':'#FFFFFF',
+    },
+  },
+  {
+    name: 'cartoon', label: 'Cartoon Pop', emoji: '💥',
+    preview: { bg: '#FFF275', card: '#FFFFFF', accent: '#FF4D6D', text: '#171321' },
+    vars: {
+      '--bg':'#FFF275','--bg2':'#7BDFF2','--card':'#FFFFFF','--card2':'#FDF0D5',
+      '--border':'#171321','--border2':'#171321','--text':'#171321','--text2':'#302A3A',
+      '--muted':'#6B5F73','--accent':'#FF4D6D','--accent-dim':'rgba(255,77,109,0.18)',
+      '--accent-border':'rgba(23,19,33,0.85)','--accent-text':'#E11D48',
+      '--red':'#EF233C','--amber':'#FFB703','--blue':'#118AB2','--purple':'#8338EC','--pink':'#FF4D6D',
+      '--nav-bg':'rgba(255,242,117,0.96)','--input-bg':'#FFFFFF','--pill-bg':'#171321','--pill-text':'#FFF275',
+    },
+  },
+  {
+    name: 'voyage', label: 'Grand Voyage', emoji: '🏴‍☠️',
+    preview: { bg: '#0C6B8F', card: '#FFF1C7', accent: '#E63946', text: '#151515' },
+    vars: {
+      '--bg':'#0C6B8F','--bg2':'#0A4C6A','--card':'#FFF1C7','--card2':'#F8DDA4',
+      '--border':'#17324D','--border2':'#C2872D','--text':'#151515','--text2':'#2D2A24',
+      '--muted':'#6D5B3F','--accent':'#E63946','--accent-dim':'rgba(230,57,70,0.16)',
+      '--accent-border':'rgba(230,57,70,0.42)','--accent-text':'#B91C1C',
+      '--red':'#E63946','--amber':'#F59E0B','--blue':'#0EA5E9','--purple':'#7C3AED','--pink':'#DB2777',
+      '--nav-bg':'rgba(12,107,143,0.95)','--input-bg':'#FFF9E8','--pill-bg':'#17324D','--pill-text':'#FFF1C7',
+    },
+  },
+  {
+    name: 'arcade', label: 'Neon Arcade', emoji: '🕹️',
+    preview: { bg: '#08031A', card: '#17102E', accent: '#00F5D4', text: '#F8F7FF' },
+    vars: {
+      '--bg':'#08031A','--bg2':'#11072B','--card':'#17102E','--card2':'#24164A',
+      '--border':'#3A2D6E','--border2':'#5A3C98','--text':'#F8F7FF','--text2':'#DDD6FE',
+      '--muted':'#9A8FC8','--accent':'#00F5D4','--accent-dim':'rgba(0,245,212,0.14)',
+      '--accent-border':'rgba(0,245,212,0.36)','--accent-text':'#00F5D4',
+      '--red':'#FF3864','--amber':'#FCEE09','--blue':'#00BBF9','--purple':'#9B5DE5','--pink':'#F15BB5',
+      '--nav-bg':'rgba(8,3,26,0.96)','--input-bg':'#11072B','--pill-bg':'#2F1E68','--pill-text':'#F8F7FF',
+    },
+  },
+  {
+    name: 'bento', label: 'Bento Studio', emoji: '🍱',
+    preview: { bg: '#F8F0E3', card: '#FFFDFC', accent: '#E94F37', text: '#263238' },
+    vars: {
+      '--bg':'#F8F0E3','--bg2':'#E6F2EF','--card':'#FFFDFC','--card2':'#F4D6CC',
+      '--border':'#314E52','--border2':'#E3B23C','--text':'#263238','--text2':'#37474F',
+      '--muted':'#6F7779','--accent':'#E94F37','--accent-dim':'rgba(233,79,55,0.13)',
+      '--accent-border':'rgba(233,79,55,0.36)','--accent-text':'#C73E2B',
+      '--red':'#E94F37','--amber':'#E3B23C','--blue':'#3A86FF','--purple':'#7B2CBF','--pink':'#FF6B9A',
+      '--nav-bg':'rgba(248,240,227,0.96)','--input-bg':'#FFFDFC','--pill-bg':'#314E52','--pill-text':'#FFFDFC',
+    },
+  },
+  {
+    name: 'candy', label: 'Candy Shop', emoji: '🍬',
+    preview: { bg: '#FFF0F6', card: '#FFFFFF', accent: '#FF5D8F', text: '#3A0B2E' },
+    vars: {
+      '--bg':'#FFF0F6','--bg2':'#E7F7FF','--card':'#FFFFFF','--card2':'#FFE3EC',
+      '--border':'#F9B4D0','--border2':'#A5D8FF','--text':'#3A0B2E','--text2':'#4A2342',
+      '--muted':'#94607D','--accent':'#FF5D8F','--accent-dim':'rgba(255,93,143,0.16)',
+      '--accent-border':'rgba(255,93,143,0.34)','--accent-text':'#DB2777',
+      '--red':'#F43F5E','--amber':'#F59E0B','--blue':'#38BDF8','--purple':'#A855F7','--pink':'#FF5D8F',
+      '--nav-bg':'rgba(255,240,246,0.96)','--input-bg':'#FFFFFF','--pill-bg':'#FFE3EC','--pill-text':'#3A0B2E',
     },
   },
   {
@@ -118,8 +178,10 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [name, setName] = useState<ThemeName>('dark')
 
   useEffect(() => {
-    const saved = localStorage.getItem('nutrition-theme') as ThemeName
-    if (saved && THEMES.find(t => t.name === saved)) setName(saved)
+    void Promise.resolve().then(() => {
+      const saved = localStorage.getItem('nutrition-theme') as ThemeName
+      if (saved && THEMES.find(t => t.name === saved)) setName(saved)
+    })
   }, [])
 
   const theme = THEMES.find(t => t.name === name) || THEMES[0]
