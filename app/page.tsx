@@ -20,7 +20,7 @@ function getGreeting() {
   return 'Good evening'
 }
 
-interface QuickItem { name: string; emoji: string; cal: number; protein: number; sodium: number; carbs: number; fiber: number }
+interface QuickItem { id?: string; name: string; emoji: string; cal: number; protein: number; sodium: number; carbs: number; fiber: number }
 
 type MealKey = 'breakfast' | 'lunch' | 'shake' | 'vita_coco' | 'dinner' | 'snack'
 
@@ -148,10 +148,17 @@ export default function Home() {
   }
 
   async function handleQuickAdd(item: QuickItem) {
-    await supabase.from('quick_adds').insert({ date: today, ...item })
-    const newQA = [...quickAdds, item]
+    const { data } = await supabase.from('quick_adds').insert({ date: today, ...item }).select().single()
+    const newQA = [...quickAdds, { ...item, id: data?.id }]
     setQuickAdds(newQA)
     setShowQuickAdd(false)
+    if (log) await syncConsumed(log, adjustedTotals, newQA)
+  }
+
+  async function removeQuickAdd(id: string) {
+    await supabase.from('quick_adds').delete().eq('id', id)
+    const newQA = quickAdds.filter(qa => qa.id !== id)
+    setQuickAdds(newQA)
     if (log) await syncConsumed(log, adjustedTotals, newQA)
   }
 
@@ -255,7 +262,12 @@ export default function Home() {
               <p className="text-xs text-gray-600 mb-2">Quick adds:</p>
               <div className="flex flex-wrap gap-1">
                 {quickAdds.map((qa, i) => (
-                  <span key={i} className="bg-[#222] rounded-lg px-2 py-1 text-xs text-gray-400">{qa.emoji} {qa.name} +{qa.cal}cal</span>
+                  <span key={i} className="bg-[#222] rounded-lg px-2 py-1 text-xs text-gray-400 flex items-center gap-1.5">
+                    {qa.emoji} {qa.name} +{qa.cal}cal
+                    {qa.id && (
+                      <button onClick={() => removeQuickAdd(qa.id!)} className="text-gray-600 hover:text-red-400 transition-colors ml-0.5">×</button>
+                    )}
+                  </span>
                 ))}
               </div>
             </div>
