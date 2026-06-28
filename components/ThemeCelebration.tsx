@@ -43,19 +43,29 @@ export default function ThemeCelebration({ metric, themeName, onDone }: Props) {
       }}
     >
       <div className="theme-celebration-burst">
-        {Array.from({ length: 28 }).map((_, index) => (
-          <span
-            key={index}
-            className="theme-confetti-piece"
-            style={{
-              '--x': `${Math.cos(index * 0.9) * (70 + (index % 5) * 22)}px`,
-              '--y': `${Math.sin(index * 1.2) * (70 + (index % 4) * 26)}px`,
-              '--delay': `${(index % 8) * 0.035}s`,
-            } as CSSProperties}
-          >
-            {pieces[index % pieces.length]}
-          </span>
-        ))}
+        {Array.from({ length: 72 }).map((_, index) => {
+          const lane = index % 12
+          const row = Math.floor(index / 12)
+          const direction = index % 2 === 0 ? 1 : -1
+          const x = (lane - 5.5) * 8.5 + direction * (18 + (row % 3) * 5)
+          const y = -36 + row * 13 + ((lane % 3) - 1) * 7
+
+          return (
+            <span
+              key={index}
+              className="theme-confetti-piece"
+              style={{
+                '--x': `${x}vw`,
+                '--y': `${y}vh`,
+                '--delay': `${(index % 16) * 0.055}s`,
+                '--spin': `${direction * (280 + (index % 5) * 90)}deg`,
+                '--size': `${20 + (index % 4) * 4}px`,
+              } as CSSProperties}
+            >
+              {pieces[index % pieces.length]}
+            </span>
+          )
+        })}
       </div>
       <div className="theme-celebration-card t-card">
         <p className="text-3xl mb-1">{pieces[0]}</p>
