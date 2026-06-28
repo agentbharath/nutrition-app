@@ -40,7 +40,7 @@ export default function Home() {
   const today = getTodayDate()
 
   const fetchLog = useCallback(async () => {
-    const { data } = await supabase.from('daily_logs').select('*').eq('date', today).single()
+    const { data } = await supabase.from('daily_logs').select('*').eq('date', today).maybeSingle()
     setLog(data)
     if (data?.meal_customizations) {
       const c = data.meal_customizations as Record<string, Record<number, number>>
