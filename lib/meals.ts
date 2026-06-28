@@ -372,6 +372,8 @@ export function calcAdjustedTotals(meal: Meal, multipliers: Record<number, numbe
     }
   }, { cal: 0, protein: 0, sodium: 0, fiber: 0, carbs: 0 })
 }
+
+export function calculateDayTotals(dayType: DayType, gymDay: boolean): Macro {
   const meals = getDayMeals(dayType, gymDay)
   const allMeals = [meals.breakfast, meals.lunch, meals.shake, meals.vitaCoco, meals.dinner, meals.snack].filter(Boolean) as Meal[]
   
