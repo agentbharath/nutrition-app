@@ -40,7 +40,11 @@ export default function Home() {
       date: today, day_type: dayType, gym_day: gymDay,
       breakfast_confirmed: true, breakfast_override: false,
       lunch_confirmed: false, dinner_confirmed: false,
-      ...totals
+      cal_total: totals.cal,
+      protein_total: totals.protein,
+      sodium_total: totals.sodium,
+      fiber_total: totals.fiber,
+      carbs_total: totals.carbs,
     }, { onConflict: 'date' }).select().single()
     setLog(data); setShowDaySelector(false); setSaving(false)
   }
