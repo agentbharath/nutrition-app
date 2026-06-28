@@ -1,5 +1,6 @@
 'use client'
 import { useState } from 'react'
+import { IngredientNutrition, searchIngredients } from '@/lib/ingredient-nutrition'
 import { parseNutritionLabel } from '@/lib/nutrition-label'
 
 interface QuickItem {
@@ -28,8 +29,13 @@ interface Props {
   onClose: () => void
 }
 
+interface RecipeIngredient {
+  ingredient: IngredientNutrition
+  grams: string
+}
+
 export default function QuickAdd({ onAdd, onClose }: Props) {
-  const [mode, setMode] = useState<'presets' | 'manual' | 'scan'>('presets')
+  const [mode, setMode] = useState<'presets' | 'manual' | 'scan' | 'recipe'>('presets')
   const [name, setName] = useState('')
   const [cal, setCal] = useState('')
   const [protein, setProtein] = useState('')
@@ -43,8 +49,16 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
   const [scanConfidence, setScanConfidence] = useState<number | null>(null)
   const [scanWarnings, setScanWarnings] = useState<string[]>([])
   const [valuesVerified, setValuesVerified] = useState(false)
+  const [recipeName, setRecipeName] = useState('')
+  const [recipeQuery, setRecipeQuery] = useState('')
+  const [recipeIngredients, setRecipeIngredients] = useState<RecipeIngredient[]>([])
+  const [recipeServings, setRecipeServings] = useState('2')
+  const [recipeServingsEaten, setRecipeServingsEaten] = useState('1')
   const scanNeedsVerification = mode === 'scan' && scanConfidence !== null && scanConfidence < 99 && !valuesVerified
   const servingCount = Math.max(0, Number(servings) || 0)
+  const recipeServingCount = Math.max(0, Number(recipeServings) || 0)
+  const recipeEatenCount = Math.max(0, Number(recipeServingsEaten) || 0)
+  const recipeResults = searchIngredients(recipeQuery)
 
   function rounded(value: number) {
     return Math.round(value * 10) / 10
@@ -61,6 +75,74 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
       sodium: Math.round((Number(sodium) || 0) * servingCount),
       carbs: rounded((Number(carbs) || 0) * servingCount),
       fiber: rounded((Number(fiber) || 0) * servingCount),
+    })
+  }
+
+  function ingredientTotals(row: RecipeIngredient) {
+    const grams = Math.max(0, Number(row.grams) || 0)
+    const factor = grams / 100
+    return {
+      cal: row.ingredient.cal * factor,
+      protein: row.ingredient.protein * factor,
+      sodium: row.ingredient.sodium * factor,
+      carbs: row.ingredient.carbs * factor,
+      fiber: row.ingredient.fiber * factor,
+    }
+  }
+
+  function recipeTotal() {
+    return recipeIngredients.reduce(
+      (total, row) => {
+        const ingredient = ingredientTotals(row)
+        return {
+          cal: total.cal + ingredient.cal,
+          protein: total.protein + ingredient.protein,
+          sodium: total.sodium + ingredient.sodium,
+          carbs: total.carbs + ingredient.carbs,
+          fiber: total.fiber + ingredient.fiber,
+        }
+      },
+      { cal: 0, protein: 0, sodium: 0, carbs: 0, fiber: 0 },
+    )
+  }
+
+  function recipeConsumedTotal() {
+    const total = recipeTotal()
+    const multiplier = recipeServingCount > 0 ? recipeEatenCount / recipeServingCount : 0
+    return {
+      cal: total.cal * multiplier,
+      protein: total.protein * multiplier,
+      sodium: total.sodium * multiplier,
+      carbs: total.carbs * multiplier,
+      fiber: total.fiber * multiplier,
+    }
+  }
+
+  function addRecipeIngredient(ingredient: IngredientNutrition) {
+    setRecipeIngredients([...recipeIngredients, { ingredient, grams: '100' }])
+    setRecipeQuery('')
+  }
+
+  function updateRecipeIngredient(index: number, grams: string) {
+    setRecipeIngredients(recipeIngredients.map((row, i) => i === index ? { ...row, grams } : row))
+  }
+
+  function removeRecipeIngredient(index: number) {
+    setRecipeIngredients(recipeIngredients.filter((_, i) => i !== index))
+  }
+
+  function handleRecipeSave() {
+    const consumed = recipeConsumedTotal()
+    if (!recipeName || recipeIngredients.length === 0 || recipeServingCount <= 0 || recipeEatenCount <= 0 || consumed.cal <= 0) return
+
+    onAdd({
+      name: `${recipeName} (${recipeEatenCount}/${recipeServingCount} recipe)`,
+      emoji: '🍲',
+      cal: Math.round(consumed.cal),
+      protein: rounded(consumed.protein),
+      sodium: Math.round(consumed.sodium),
+      carbs: rounded(consumed.carbs),
+      fiber: rounded(consumed.fiber),
     })
   }
 
@@ -153,10 +235,139 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
               🏷️ Scan nutrition label
             </button>
             <button
+              onClick={() => setMode('recipe')}
+              className="w-full btn-confirm rounded-xl py-3 text-sm font-semibold mb-2"
+            >
+              🍲 Recipe from ingredients
+            </button>
+            <button
               onClick={() => setMode('manual')}
               className="w-full border t-border text-gray-400 rounded-xl py-3 text-sm hover:t-text hover:border-[#555] transition-colors"
             >
               ✎ Add something else manually
+            </button>
+          </>
+        ) : mode === 'recipe' ? (
+          <>
+            <div className="space-y-3 mb-4">
+              <div>
+                <label className="text-xs t-muted uppercase tracking-wider">Recipe name</label>
+                <input
+                  type="text"
+                  value={recipeName}
+                  onChange={e => setRecipeName(e.target.value)}
+                  placeholder="e.g. Chicken curry"
+                  className="mt-1 w-full t-card2 border t-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50 t-text placeholder-gray-600"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="text-xs t-muted uppercase tracking-wider">Recipe makes</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.25"
+                    value={recipeServings}
+                    onChange={e => setRecipeServings(e.target.value)}
+                    className="mt-1 w-full t-card2 border t-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50 t-text"
+                  />
+                  <p className="text-[11px] t-muted mt-1">servings</p>
+                </div>
+                <div>
+                  <label className="text-xs t-muted uppercase tracking-wider">You ate</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.25"
+                    value={recipeServingsEaten}
+                    onChange={e => setRecipeServingsEaten(e.target.value)}
+                    className="mt-1 w-full t-card2 border t-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50 t-text"
+                  />
+                  <p className="text-[11px] t-muted mt-1">servings</p>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs t-muted uppercase tracking-wider">Search ingredient</label>
+                <input
+                  type="text"
+                  value={recipeQuery}
+                  onChange={e => setRecipeQuery(e.target.value)}
+                  placeholder="chicken, onion, rice, tofu..."
+                  className="mt-1 w-full t-card2 border t-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50 t-text placeholder-gray-600"
+                />
+                <div className="mt-2 max-h-44 overflow-y-auto space-y-1.5">
+                  {recipeResults.map((ingredient) => (
+                    <button
+                      key={ingredient.id}
+                      onClick={() => addRecipeIngredient(ingredient)}
+                      className="w-full t-card2 border t-border rounded-xl px-3 py-2 text-left flex items-center justify-between gap-2"
+                    >
+                      <span>
+                        <span className="text-sm font-medium t-text">{ingredient.name}</span>
+                        <span className="block text-xs t-muted">{ingredient.cuisine} • per 100g</span>
+                      </span>
+                      <span className="text-xs t-accent shrink-0">Add</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {recipeIngredients.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs t-muted uppercase tracking-wider">Ingredients</p>
+                  {recipeIngredients.map((row, index) => {
+                    const totals = ingredientTotals(row)
+                    return (
+                      <div key={`${row.ingredient.id}-${index}`} className="t-card2 rounded-xl p-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <p className="text-sm font-medium t-text">{row.ingredient.name}</p>
+                            <p className="text-xs t-muted">{Math.round(totals.cal)} cal • {rounded(totals.protein)}g P • {rounded(totals.carbs)}g C</p>
+                          </div>
+                          <button onClick={() => removeRecipeIngredient(index)} className="text-xs t-muted hover:text-red-400">Remove</button>
+                        </div>
+                        <div className="flex items-center gap-2 mt-2">
+                          <input
+                            type="number"
+                            min="0"
+                            step="1"
+                            value={row.grams}
+                            onChange={e => updateRecipeIngredient(index, e.target.value)}
+                            className="flex-1 t-card border t-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-emerald-500/50 t-text"
+                          />
+                          <span className="text-sm t-muted w-8">g</span>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+
+            {recipeIngredients.length > 0 && recipeServingCount > 0 && recipeEatenCount > 0 && (
+              <div className="rounded-xl t-card2 p-3 mb-3">
+                <p className="text-xs t-muted uppercase tracking-wider mb-1">Totals added</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <span className="macro-pill rounded-lg px-2 py-1 text-xs font-medium">{Math.round(recipeConsumedTotal().cal)} cal</span>
+                  <span className="text-xs text-blue-400 rounded-lg px-2 py-1" style={{ background: 'rgba(59,130,246,0.10)' }}>{rounded(recipeConsumedTotal().protein)}g P</span>
+                  <span className="text-xs text-amber-400 rounded-lg px-2 py-1" style={{ background: 'rgba(245,158,11,0.10)' }}>{Math.round(recipeConsumedTotal().sodium)}mg Na</span>
+                  <span className="text-xs text-pink-400 rounded-lg px-2 py-1" style={{ background: 'rgba(236,72,153,0.10)' }}>{rounded(recipeConsumedTotal().carbs)}g C</span>
+                  <span className="text-xs text-purple-400 rounded-lg px-2 py-1" style={{ background: 'rgba(139,92,246,0.10)' }}>{rounded(recipeConsumedTotal().fiber)}g F</span>
+                </div>
+              </div>
+            )}
+
+            <button
+              onClick={handleRecipeSave}
+              disabled={!recipeName || recipeIngredients.length === 0 || recipeServingCount <= 0 || recipeEatenCount <= 0}
+              className="w-full bg-[var(--accent)] disabled:macro-pill disabled:t-muted text-black font-bold rounded-xl py-3 text-sm transition-colors mb-2"
+            >
+              Add Recipe to Today
+            </button>
+            <button onClick={() => setMode('presets')} className="w-full t-muted text-sm py-2 hover:t-text transition-colors">
+              ← Back to quick items
             </button>
           </>
         ) : (
