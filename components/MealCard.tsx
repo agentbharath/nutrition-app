@@ -102,7 +102,7 @@ export default function MealCard({
 
         {/* Action Buttons */}
         <div className="flex gap-2">
-          {!confirmed && label !== 'Breakfast' && (
+          {!confirmed && (
             <button
               onClick={() => onConfirm(adjusted)}
               className="flex-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-xl py-2 text-xs font-semibold hover:bg-emerald-500/20 transition-colors"
