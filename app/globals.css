@@ -120,6 +120,12 @@ circle { transition: stroke-dashoffset 0.6s cubic-bezier(0.4,0,0.2,1); }
   --input-bg: #111111;
   --pill-bg: #2A2A2A;
   --pill-text: #FFFFFF;
+  --ring-track: rgba(120, 120, 120, 0.38);
+  --macro-cal: #059669;
+  --macro-protein: #2563EB;
+  --macro-sodium: #B45309;
+  --macro-fiber: #7C3AED;
+  --macro-carbs: #DB2777;
   --theme-pattern: none;
   --theme-pattern-soft: none;
   --card-pattern: none;

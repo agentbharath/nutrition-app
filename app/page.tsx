@@ -258,11 +258,11 @@ export default function Home() {
             <button onClick={() => setShowQuickAdd(true)} className="text-xs btn-confirm rounded-lg px-2.5 py-1">➕ Quick Add</button>
           </div>
           <div className="grid grid-cols-5 gap-1">
-            <ProgressRing label="Cal" value={consumed.cal} target={TARGETS.cal} unit="" color="#10B981" />
-            <ProgressRing label="Protein" value={consumed.protein} target={TARGETS.protein} unit="g" color="#3B82F6" />
-            <ProgressRing label="Sodium" value={consumed.sodium} target={TARGETS.sodium} unit="mg" color="#F59E0B" invert />
-            <ProgressRing label="Fiber" value={consumed.fiber} target={TARGETS.fiber} unit="g" color="#8B5CF6" />
-            <ProgressRing label="Carbs" value={consumed.carbs} target={TARGETS.carbs} unit="g" color="#EC4899" />
+            <ProgressRing label="Cal" value={consumed.cal} target={TARGETS.cal} unit="" color="var(--macro-cal)" />
+            <ProgressRing label="Protein" value={consumed.protein} target={TARGETS.protein} unit="g" color="var(--macro-protein)" />
+            <ProgressRing label="Sodium" value={consumed.sodium} target={TARGETS.sodium} unit="mg" color="var(--macro-sodium)" invert />
+            <ProgressRing label="Fiber" value={consumed.fiber} target={TARGETS.fiber} unit="g" color="var(--macro-fiber)" />
+            <ProgressRing label="Carbs" value={consumed.carbs} target={TARGETS.carbs} unit="g" color="var(--macro-carbs)" />
           </div>
           <div className="mt-3 pt-3 border-t t-border grid grid-cols-3 gap-2 text-center">
             <div>
