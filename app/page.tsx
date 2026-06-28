@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import { supabase, DayType, DailyLog } from '@/lib/supabase'
-import { DAY_TYPE_OPTIONS, getDayMeals, calculateDayTotals, TARGETS, SWAP_OPTIONS, Macro } from '@/lib/meals'
+import { DAY_TYPE_OPTIONS, getDayMeals, calculateDayTotals, TARGETS, SWAP_OPTIONS, Macro, calcAdjustedTotals } from '@/lib/meals'
 import ProgressRing from '@/components/ProgressRing'
 import MealCard from '@/components/MealCard'
 import DaySelector from '@/components/DaySelector'
@@ -42,10 +42,31 @@ export default function Home() {
   const fetchLog = useCallback(async () => {
     const { data } = await supabase.from('daily_logs').select('*').eq('date', today).maybeSingle()
     setLog(data)
-    if (data?.meal_customizations) {
-      const c = data.meal_customizations as Record<string, Record<number, number>>
-      setMealMultipliers(c as any)
+
+    if (data?.meal_customizations && data.day_type) {
+      const savedMultipliers = data.meal_customizations as Partial<Record<MealKey, Record<number, number>>>
+      setMealMultipliers(savedMultipliers)
+
+      // Restore adjusted totals from saved multipliers
+      const dayMeals = getDayMeals(data.day_type as DayType, data.gym_day)
+      const mealMap: Partial<Record<MealKey, any>> = {
+        breakfast: dayMeals.breakfast,
+        lunch: dayMeals.lunch,
+        shake: dayMeals.shake,
+        vita_coco: dayMeals.vitaCoco,
+        dinner: dayMeals.dinner,
+        snack: dayMeals.snack,
+      }
+      const restored: Partial<Record<MealKey, Macro>> = {}
+      for (const [key, multipliers] of Object.entries(savedMultipliers)) {
+        const meal = mealMap[key as MealKey]
+        if (meal && multipliers && Object.keys(multipliers).length > 0) {
+          restored[key as MealKey] = calcAdjustedTotals(meal, multipliers as Record<number, number>)
+        }
+      }
+      setAdjustedTotals(restored)
     }
+
     const { data: qa } = await supabase.from('quick_adds').select('*').eq('date', today)
     setQuickAdds(qa || [])
     setLoading(false)
