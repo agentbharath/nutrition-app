@@ -1,7 +1,7 @@
 'use client'
 import { createContext, useContext, useEffect, useState } from 'react'
 
-export type ThemeName = 'dark' | 'light' | 'amoled' | 'cartoon' | 'voyage' | 'arcade' | 'bento' | 'candy' | 'matcha' | 'sunrise' | 'coastal' | 'fig' | 'salt'
+export type ThemeName = 'dark' | 'light' | 'amoled' | 'cartoon' | 'voyage' | 'arcade' | 'bento' | 'candy' | 'safari' | 'matcha' | 'sunrise' | 'coastal' | 'fig' | 'salt'
 
 export interface Theme {
   name: ThemeName
@@ -18,7 +18,7 @@ export const THEMES: Theme[] = [
     vars: {
       '--bg':'#0A0A0A','--bg2':'#0F0F0F','--card':'#1A1A1A','--card2':'#222222',
       '--border':'#2A2A2A','--border2':'#333333','--text':'#FFFFFF','--text2':'#CCCCCC',
-      '--muted':'#777777','--accent':'#10B981','--accent-dim':'rgba(16,185,129,0.12)',
+      '--muted':'#A3A3A3','--accent':'#10B981','--accent-dim':'rgba(16,185,129,0.12)',
       '--accent-border':'rgba(16,185,129,0.25)','--accent-text':'#10B981',
       '--red':'#EF4444','--amber':'#F59E0B','--blue':'#3B82F6','--purple':'#8B5CF6','--pink':'#EC4899',
       '--nav-bg':'rgba(10,10,10,0.92)','--input-bg':'#111111','--pill-bg':'#2A2A2A','--pill-text':'#FFFFFF',
@@ -42,7 +42,7 @@ export const THEMES: Theme[] = [
     vars: {
       '--bg':'#000000','--bg2':'#020202','--card':'#0D0D0D','--card2':'#141414',
       '--border':'#1A1A1A','--border2':'#222222','--text':'#FFFFFF','--text2':'#E0E0E0',
-      '--muted':'#666666','--accent':'#00E5B4','--accent-dim':'rgba(0,229,180,0.10)',
+      '--muted':'#A3A3A3','--accent':'#00E5B4','--accent-dim':'rgba(0,229,180,0.10)',
       '--accent-border':'rgba(0,229,180,0.20)','--accent-text':'#00E5B4',
       '--red':'#FF4444','--amber':'#FFB300','--blue':'#4488FF','--purple':'#AA88FF','--pink':'#FF55CC',
       '--nav-bg':'rgba(0,0,0,0.97)','--input-bg':'#080808','--pill-bg':'#1A1A1A','--pill-text':'#FFFFFF',
@@ -54,22 +54,34 @@ export const THEMES: Theme[] = [
     vars: {
       '--bg':'#FFF275','--bg2':'#7BDFF2','--card':'#FFFFFF','--card2':'#FDF0D5',
       '--border':'#171321','--border2':'#171321','--text':'#171321','--text2':'#302A3A',
-      '--muted':'#6B5F73','--accent':'#FF4D6D','--accent-dim':'rgba(255,77,109,0.18)',
+      '--muted':'#4B3F5A','--accent':'#FF4D6D','--accent-dim':'rgba(255,77,109,0.18)',
       '--accent-border':'rgba(23,19,33,0.85)','--accent-text':'#E11D48',
       '--red':'#EF233C','--amber':'#FFB703','--blue':'#118AB2','--purple':'#8338EC','--pink':'#FF4D6D',
       '--nav-bg':'rgba(255,242,117,0.96)','--input-bg':'#FFFFFF','--pill-bg':'#171321','--pill-text':'#FFF275',
+      '--theme-pattern':'radial-gradient(circle at 18px 18px, rgba(23,19,33,0.16) 0 2px, transparent 2.5px), radial-gradient(circle at 42px 46px, rgba(255,77,109,0.18) 0 7px, transparent 7.5px)',
+      '--theme-pattern-soft':'radial-gradient(circle at 20px 20px, rgba(23,19,33,0.08) 0 2px, transparent 2.5px)',
+      '--card-pattern':'linear-gradient(135deg, rgba(255,242,117,0.20) 0 25%, transparent 25% 50%, rgba(123,223,242,0.18) 50% 75%, transparent 75%)',
+      '--header-art':'radial-gradient(circle at 88% 24%, rgba(255,77,109,0.32) 0 18px, transparent 19px), radial-gradient(circle at 78% 52%, rgba(255,183,3,0.30) 0 12px, transparent 13px)',
+      '--card-shadow':'4px 4px 0 rgba(23,19,33,0.26)',
+      '--card-shadow-soft':'3px 3px 0 rgba(23,19,33,0.16)',
     },
   },
   {
     name: 'voyage', label: 'Grand Voyage', emoji: '🏴‍☠️',
-    preview: { bg: '#0C6B8F', card: '#FFF1C7', accent: '#E63946', text: '#151515' },
+    preview: { bg: '#8EDAE6', card: '#FFF1C7', accent: '#D62839', text: '#151515' },
     vars: {
-      '--bg':'#0C6B8F','--bg2':'#0A4C6A','--card':'#FFF1C7','--card2':'#F8DDA4',
+      '--bg':'#8EDAE6','--bg2':'#37A5B8','--card':'#FFF1C7','--card2':'#F8DDA4',
       '--border':'#17324D','--border2':'#C2872D','--text':'#151515','--text2':'#2D2A24',
-      '--muted':'#6D5B3F','--accent':'#E63946','--accent-dim':'rgba(230,57,70,0.16)',
-      '--accent-border':'rgba(230,57,70,0.42)','--accent-text':'#B91C1C',
-      '--red':'#E63946','--amber':'#F59E0B','--blue':'#0EA5E9','--purple':'#7C3AED','--pink':'#DB2777',
-      '--nav-bg':'rgba(12,107,143,0.95)','--input-bg':'#FFF9E8','--pill-bg':'#17324D','--pill-text':'#FFF1C7',
+      '--muted':'#4A3820','--accent':'#D62839','--accent-dim':'rgba(214,40,57,0.16)',
+      '--accent-border':'rgba(23,50,77,0.58)','--accent-text':'#9F1D2B',
+      '--red':'#D62839','--amber':'#B66A00','--blue':'#006A8E','--purple':'#6D28D9','--pink':'#BE185D',
+      '--nav-bg':'rgba(255,241,199,0.96)','--input-bg':'#FFF9E8','--pill-bg':'#17324D','--pill-text':'#FFF1C7',
+      '--theme-pattern':'radial-gradient(ellipse at 20% 0%, rgba(255,255,255,0.45) 0 18%, transparent 19%), repeating-radial-gradient(ellipse at 50% 110%, rgba(23,50,77,0.18) 0 6px, transparent 7px 22px)',
+      '--theme-pattern-soft':'repeating-linear-gradient(135deg, rgba(23,50,77,0.08) 0 8px, transparent 8px 18px)',
+      '--card-pattern':'linear-gradient(90deg, rgba(194,135,45,0.12), transparent 45%), radial-gradient(circle at 92% 18%, rgba(214,40,57,0.13) 0 18px, transparent 19px)',
+      '--header-art':'radial-gradient(circle at 92% 35%, rgba(255,241,199,0.60) 0 22px, transparent 23px)',
+      '--card-shadow':'0 5px 0 rgba(23,50,77,0.28)',
+      '--card-shadow-soft':'0 3px 0 rgba(23,50,77,0.18)',
     },
   },
   {
@@ -82,6 +94,12 @@ export const THEMES: Theme[] = [
       '--accent-border':'rgba(0,245,212,0.36)','--accent-text':'#00F5D4',
       '--red':'#FF3864','--amber':'#FCEE09','--blue':'#00BBF9','--purple':'#9B5DE5','--pink':'#F15BB5',
       '--nav-bg':'rgba(8,3,26,0.96)','--input-bg':'#11072B','--pill-bg':'#2F1E68','--pill-text':'#F8F7FF',
+      '--theme-pattern':'linear-gradient(rgba(0,245,212,0.08) 1px, transparent 1px), linear-gradient(90deg, rgba(241,91,181,0.08) 1px, transparent 1px), radial-gradient(circle at 82% 18%, rgba(252,238,9,0.22) 0 3px, transparent 4px)',
+      '--theme-pattern-soft':'linear-gradient(rgba(0,245,212,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(241,91,181,0.05) 1px, transparent 1px)',
+      '--card-pattern':'radial-gradient(circle at 88% 12%, rgba(0,245,212,0.12) 0 18px, transparent 19px)',
+      '--header-art':'radial-gradient(circle at 86% 32%, rgba(241,91,181,0.30) 0 14px, transparent 15px), radial-gradient(circle at 74% 52%, rgba(0,245,212,0.24) 0 9px, transparent 10px)',
+      '--card-shadow':'0 0 24px rgba(0,245,212,0.13)',
+      '--card-shadow-soft':'0 0 18px rgba(155,93,229,0.12)',
     },
   },
   {
@@ -94,6 +112,12 @@ export const THEMES: Theme[] = [
       '--accent-border':'rgba(233,79,55,0.36)','--accent-text':'#C73E2B',
       '--red':'#E94F37','--amber':'#E3B23C','--blue':'#3A86FF','--purple':'#7B2CBF','--pink':'#FF6B9A',
       '--nav-bg':'rgba(248,240,227,0.96)','--input-bg':'#FFFDFC','--pill-bg':'#314E52','--pill-text':'#FFFDFC',
+      '--theme-pattern':'linear-gradient(90deg, rgba(49,78,82,0.08) 1px, transparent 1px), linear-gradient(rgba(49,78,82,0.08) 1px, transparent 1px)',
+      '--theme-pattern-soft':'linear-gradient(90deg, rgba(49,78,82,0.05) 1px, transparent 1px), linear-gradient(rgba(49,78,82,0.05) 1px, transparent 1px)',
+      '--card-pattern':'radial-gradient(circle at 90% 12%, rgba(233,79,55,0.10) 0 22px, transparent 23px), radial-gradient(circle at 12% 88%, rgba(227,178,60,0.12) 0 16px, transparent 17px)',
+      '--header-art':'radial-gradient(circle at 86% 36%, rgba(233,79,55,0.20) 0 18px, transparent 19px)',
+      '--card-shadow':'0 4px 0 rgba(49,78,82,0.18)',
+      '--card-shadow-soft':'0 2px 0 rgba(49,78,82,0.12)',
     },
   },
   {
@@ -106,6 +130,30 @@ export const THEMES: Theme[] = [
       '--accent-border':'rgba(255,93,143,0.34)','--accent-text':'#DB2777',
       '--red':'#F43F5E','--amber':'#F59E0B','--blue':'#38BDF8','--purple':'#A855F7','--pink':'#FF5D8F',
       '--nav-bg':'rgba(255,240,246,0.96)','--input-bg':'#FFFFFF','--pill-bg':'#FFE3EC','--pill-text':'#3A0B2E',
+      '--theme-pattern':'repeating-linear-gradient(135deg, rgba(255,93,143,0.12) 0 10px, transparent 10px 24px), radial-gradient(circle at 82% 12%, rgba(56,189,248,0.18) 0 18px, transparent 19px)',
+      '--theme-pattern-soft':'repeating-linear-gradient(135deg, rgba(255,93,143,0.06) 0 8px, transparent 8px 18px)',
+      '--card-pattern':'radial-gradient(circle at 90% 18%, rgba(255,93,143,0.10) 0 20px, transparent 21px), radial-gradient(circle at 12% 84%, rgba(56,189,248,0.10) 0 16px, transparent 17px)',
+      '--header-art':'radial-gradient(circle at 86% 28%, rgba(255,93,143,0.22) 0 18px, transparent 19px), radial-gradient(circle at 75% 50%, rgba(56,189,248,0.20) 0 12px, transparent 13px)',
+      '--card-shadow':'0 5px 18px rgba(255,93,143,0.18)',
+      '--card-shadow-soft':'0 4px 14px rgba(56,189,248,0.14)',
+    },
+  },
+  {
+    name: 'safari', label: 'Safari Paws', emoji: '🐾',
+    preview: { bg: '#E9F5DB', card: '#FFF8D6', accent: '#2D6A4F', text: '#1F2D16' },
+    vars: {
+      '--bg':'#E9F5DB','--bg2':'#CFE8B8','--card':'#FFF8D6','--card2':'#F3E6B3',
+      '--border':'#385A32','--border2':'#8B6B32','--text':'#1F2D16','--text2':'#2D3A23',
+      '--muted':'#52643F','--accent':'#2D6A4F','--accent-dim':'rgba(45,106,79,0.14)',
+      '--accent-border':'rgba(56,90,50,0.44)','--accent-text':'#1B5E40',
+      '--red':'#B91C1C','--amber':'#A16207','--blue':'#0369A1','--purple':'#6D28D9','--pink':'#BE185D',
+      '--nav-bg':'rgba(233,245,219,0.96)','--input-bg':'#FFFDF0','--pill-bg':'#2D6A4F','--pill-text':'#FFF8D6',
+      '--theme-pattern':'radial-gradient(circle at 18px 18px, rgba(45,106,79,0.12) 0 7px, transparent 8px), radial-gradient(circle at 34px 28px, rgba(45,106,79,0.12) 0 3px, transparent 4px), radial-gradient(circle at 8px 28px, rgba(45,106,79,0.12) 0 3px, transparent 4px)',
+      '--theme-pattern-soft':'radial-gradient(circle at 18px 18px, rgba(45,106,79,0.06) 0 7px, transparent 8px)',
+      '--card-pattern':'linear-gradient(120deg, rgba(45,106,79,0.08), transparent 35%), radial-gradient(circle at 92% 16%, rgba(161,98,7,0.10) 0 20px, transparent 21px)',
+      '--header-art':'radial-gradient(circle at 88% 32%, rgba(45,106,79,0.18) 0 20px, transparent 21px)',
+      '--card-shadow':'0 5px 0 rgba(45,106,79,0.20)',
+      '--card-shadow-soft':'0 3px 0 rgba(45,106,79,0.12)',
     },
   },
   {
@@ -174,6 +222,15 @@ const ThemeContext = createContext<{ theme: Theme; setTheme: (n: ThemeName) => v
   theme: THEMES[0], setTheme: () => {},
 })
 
+const DECORATIVE_DEFAULTS: Record<string, string> = {
+  '--theme-pattern': 'none',
+  '--theme-pattern-soft': 'none',
+  '--card-pattern': 'none',
+  '--header-art': 'none',
+  '--card-shadow': 'none',
+  '--card-shadow-soft': 'none',
+}
+
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [name, setName] = useState<ThemeName>('dark')
 
@@ -188,6 +245,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const root = document.documentElement
+    Object.entries(DECORATIVE_DEFAULTS).forEach(([k, v]) => root.style.setProperty(k, v))
     Object.entries(theme.vars).forEach(([k, v]) => root.style.setProperty(k, v))
   }, [theme])
 

@@ -5,6 +5,8 @@
 body {
   -webkit-font-smoothing: antialiased;
   background-color: var(--bg);
+  background-image: var(--theme-pattern);
+  background-attachment: fixed;
   color: var(--text);
   transition: background-color 0.3s, color 0.3s;
 }
@@ -12,10 +14,10 @@ body {
 html { scroll-behavior: smooth; }
 
 /* ── Utility classes using CSS vars ── */
-.t-bg    { background-color: var(--bg); }
-.t-bg2   { background-color: var(--bg2); }
-.t-card  { background-color: var(--card); border: 1px solid var(--border); }
-.t-card2 { background-color: var(--card2); border: 1px solid var(--border); }
+.t-bg    { background-color: var(--bg); background-image: var(--theme-pattern); }
+.t-bg2   { background-color: var(--bg2); background-image: var(--theme-pattern-soft); }
+.t-card  { background-color: var(--card); background-image: var(--card-pattern); border: 1px solid var(--border); box-shadow: var(--card-shadow); }
+.t-card2 { background-color: var(--card2); background-image: var(--card-pattern); border: 1px solid var(--border); box-shadow: var(--card-shadow-soft); }
 .t-text  { color: var(--text); }
 .t-text2 { color: var(--text2); }
 .t-muted { color: var(--muted); }
@@ -25,12 +27,13 @@ html { scroll-behavior: smooth; }
 /* ── Day banner ── */
 .day-banner {
   background-color: var(--card);
+  background-image: var(--card-pattern);
   border: 1px solid var(--accent-border);
 }
 
 /* ── App header gradient (no color-mix — Safari safe) ── */
 .app-header {
-  background: linear-gradient(180deg, var(--accent-dim) 0%, transparent 100%);
+  background: var(--header-art), linear-gradient(180deg, var(--accent-dim) 0%, transparent 100%);
 }
 
 /* ── Confirmed glow ── */
@@ -117,4 +120,10 @@ circle { transition: stroke-dashoffset 0.6s cubic-bezier(0.4,0,0.2,1); }
   --input-bg: #111111;
   --pill-bg: #2A2A2A;
   --pill-text: #FFFFFF;
+  --theme-pattern: none;
+  --theme-pattern-soft: none;
+  --card-pattern: none;
+  --header-art: none;
+  --card-shadow: none;
+  --card-shadow-soft: none;
 }
