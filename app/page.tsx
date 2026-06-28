@@ -1,12 +1,13 @@
 'use client'
 import { useEffect, useState, useCallback } from 'react'
 import { supabase, DayType, DailyLog } from '@/lib/supabase'
-import { DAY_TYPE_OPTIONS, getDayMeals, calculateDayTotals, TARGETS, DAY_TEMPLATES, SWAP_OPTIONS } from '@/lib/meals'
+import { DAY_TYPE_OPTIONS, getDayMeals, calculateDayTotals, TARGETS, SWAP_OPTIONS } from '@/lib/meals'
 import ProgressRing from '@/components/ProgressRing'
 import MealCard from '@/components/MealCard'
 import DaySelector from '@/components/DaySelector'
 import SwapModal from '@/components/SwapModal'
 import BreakfastOverride from '@/components/BreakfastOverride'
+import QuickAdd from '@/components/QuickAdd'
 import Link from 'next/link'
 
 function getTodayDate() { return new Date().toISOString().split('T')[0] }
@@ -17,18 +18,25 @@ function getGreeting() {
   return 'Good evening'
 }
 
+interface QuickItem { name: string; emoji: string; cal: number; protein: number; sodium: number; carbs: number; fiber: number }
+
 export default function Home() {
   const [log, setLog] = useState<DailyLog | null>(null)
+  const [quickAdds, setQuickAdds] = useState<QuickItem[]>([])
   const [loading, setLoading] = useState(true)
   const [showDaySelector, setShowDaySelector] = useState(false)
   const [showSwap, setShowSwap] = useState<'lunch'|'dinner'|null>(null)
   const [showBreakfastOverride, setShowBreakfastOverride] = useState(false)
+  const [showQuickAdd, setShowQuickAdd] = useState(false)
   const [saving, setSaving] = useState(false)
   const today = getTodayDate()
 
   const fetchLog = useCallback(async () => {
     const { data } = await supabase.from('daily_logs').select('*').eq('date', today).single()
-    setLog(data); setLoading(false)
+    setLog(data)
+    const { data: qa } = await supabase.from('quick_adds').select('*').eq('date', today)
+    setQuickAdds(qa || [])
+    setLoading(false)
   }, [today])
 
   useEffect(() => { fetchLog() }, [fetchLog])
@@ -61,6 +69,12 @@ export default function Home() {
     setShowSwap(null)
   }
 
+  async function handleQuickAdd(item: QuickItem) {
+    await supabase.from('quick_adds').insert({ date: today, ...item })
+    setQuickAdds(prev => [...prev, item])
+    setShowQuickAdd(false)
+  }
+
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
       <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
@@ -71,6 +85,7 @@ export default function Home() {
   const dayLabel = log ? DAY_TYPE_OPTIONS.find(d => d.value === log.day_type) : null
   const swapOptions = showSwap === 'dinner' && log ? (SWAP_OPTIONS[`${log.day_type}_dinner_${log.gym_day ? 'gym' : 'rest'}`] || SWAP_OPTIONS[`${log.day_type}_dinner`] || []) : []
 
+  // Compute consumed
   const consumed = { cal: 0, protein: 0, sodium: 0, fiber: 0, carbs: 0 }
   if (log && meals) {
     if (log.breakfast_confirmed) {
@@ -91,6 +106,11 @@ export default function Home() {
       const d = meals.dinner.totals
       consumed.cal += d.cal; consumed.protein += d.protein; consumed.sodium += d.sodium; consumed.fiber += d.fiber; consumed.carbs += d.carbs
     }
+    // Quick adds
+    quickAdds.forEach(qa => {
+      consumed.cal += qa.cal; consumed.protein += qa.protein; consumed.sodium += qa.sodium
+      consumed.fiber += qa.fiber; consumed.carbs += qa.carbs
+    })
   }
 
   return (
@@ -122,7 +142,12 @@ export default function Home() {
 
       {log && (
         <div className="mx-4 mb-4 bg-[#141414] border border-[#222] rounded-2xl p-4">
-          <p className="text-xs text-gray-500 mb-3 uppercase tracking-wider">Today&apos;s Progress</p>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs text-gray-500 uppercase tracking-wider">Today&apos;s Progress</p>
+            <button onClick={() => setShowQuickAdd(true)} className="text-xs text-emerald-500 border border-emerald-500/30 rounded-lg px-2.5 py-1 hover:bg-emerald-500/10 transition-colors">
+              ➕ Quick Add
+            </button>
+          </div>
           <div className="grid grid-cols-5 gap-1">
             <ProgressRing label="Cal" value={consumed.cal} target={TARGETS.cal} unit="" color="#10B981" />
             <ProgressRing label="Protein" value={consumed.protein} target={TARGETS.protein} unit="g" color="#3B82F6" />
@@ -148,6 +173,20 @@ export default function Home() {
               <p className="text-gray-500 text-xs">protein</p>
             </div>
           </div>
+
+          {/* Quick adds display */}
+          {quickAdds.length > 0 && (
+            <div className="mt-3 pt-3 border-t border-[#222]">
+              <p className="text-xs text-gray-600 mb-2">Quick adds today:</p>
+              <div className="flex flex-wrap gap-1">
+                {quickAdds.map((qa, i) => (
+                  <span key={i} className="bg-[#222] rounded-lg px-2 py-1 text-xs text-gray-400">
+                    {qa.emoji} {qa.name} +{qa.cal}cal
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -169,8 +208,8 @@ export default function Home() {
           <p className="text-xs text-gray-500 uppercase tracking-wider mt-2">Today&apos;s Meals</p>
           <MealCard meal={meals.breakfast} label="Breakfast" emoji="🥣" confirmed={log.breakfast_confirmed} onConfirm={() => {}} onOverride={() => setShowBreakfastOverride(true)} isOverride={log.breakfast_override} />
           {meals.lunch && <MealCard meal={meals.lunch} label="Lunch" emoji="🥗" confirmed={log.lunch_confirmed} onConfirm={() => updateLog({ lunch_confirmed: true })} />}
-          {meals.shake && <MealCard meal={meals.shake} label="Protein Shake" emoji="🥛" confirmed={false} onConfirm={() => {}} />}
-          {meals.vitaCoco && <MealCard meal={meals.vitaCoco} label="Post-Gym Electrolytes" emoji="🥥" confirmed={false} onConfirm={() => {}} />}
+          {meals.shake && <MealCard meal={meals.shake} label="Protein Shake" emoji="🥛" confirmed={false} onConfirm={async () => { await supabase.from('quick_adds').insert({ date: today, name: 'Fairlife Core Power', emoji: '🥛', cal: 230, protein: 42, sodium: 280, carbs: 12, fiber: 0 }); setQuickAdds(prev => [...prev, { name: 'Fairlife Core Power', emoji: '🥛', cal: 230, protein: 42, sodium: 280, carbs: 12, fiber: 0 }]) }} />}
+          {meals.vitaCoco && <MealCard meal={meals.vitaCoco} label="Post-Gym Electrolytes" emoji="🥥" confirmed={false} onConfirm={async () => { await supabase.from('quick_adds').insert({ date: today, name: 'Vita Coco 500ml', emoji: '🥥', cal: 90, protein: 0, sodium: 30, carbs: 23, fiber: 0 }); setQuickAdds(prev => [...prev, { name: 'Vita Coco 500ml', emoji: '🥥', cal: 90, protein: 0, sodium: 30, carbs: 23, fiber: 0 }]) }} />}
           <MealCard meal={meals.dinner} label="Dinner" emoji="🍽️" confirmed={log.dinner_confirmed} onConfirm={() => updateLog({ dinner_confirmed: true })} onSwap={swapOptions.length > 0 ? () => setShowSwap('dinner') : undefined} swappable={swapOptions.length > 0} />
           {meals.snack && <MealCard meal={meals.snack} label="Snack" emoji="🍊" confirmed={false} onConfirm={() => {}} />}
         </div>
@@ -198,6 +237,7 @@ export default function Home() {
       {showDaySelector && <DaySelector onSelect={createLog} onClose={() => setShowDaySelector(false)} saving={saving} />}
       {showSwap && <SwapModal mealType={showSwap} options={swapOptions} onSelect={(id) => applySwap(showSwap, id)} onClose={() => setShowSwap(null)} />}
       {showBreakfastOverride && <BreakfastOverride onSave={async (c,p,s) => { await updateLog({ breakfast_override: true, breakfast_override_cal: c, breakfast_override_protein: p, breakfast_override_sodium: s }); setShowBreakfastOverride(false) }} onClose={() => setShowBreakfastOverride(false)} />}
+      {showQuickAdd && <QuickAdd onAdd={handleQuickAdd} onClose={() => setShowQuickAdd(false)} />}
     </main>
   )
 }

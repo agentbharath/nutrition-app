@@ -51,7 +51,7 @@ export default function MealCard({ meal, label, emoji, confirmed, onConfirm, onS
 
         {/* Action Buttons */}
         <div className="flex gap-2 mt-3">
-          {!confirmed && label !== 'Breakfast' && label !== 'Protein Shake' && label !== 'Post-Gym Electrolytes' && label !== 'Snack' && (
+          {!confirmed && label !== 'Breakfast' && label !== 'Snack' && (
             <button onClick={onConfirm} className="flex-1 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 rounded-xl py-2 text-xs font-semibold hover:bg-emerald-500/20 transition-colors">
               ✓ Mark as eaten
             </button>
