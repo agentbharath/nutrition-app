@@ -21,6 +21,7 @@ export interface DailyLog {
   dinner_confirmed: boolean
   shake_confirmed?: boolean
   vita_coco_confirmed?: boolean
+  snack_confirmed?: boolean
   lunch_swapped_to?: string
   dinner_swapped_to?: string
   cal_total: number

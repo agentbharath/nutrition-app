@@ -48,7 +48,7 @@ export default function Home() {
       date: today, day_type: dayType, gym_day: gymDay,
       breakfast_confirmed: true, breakfast_override: false,
       lunch_confirmed: false, dinner_confirmed: false,
-      shake_confirmed: false, vita_coco_confirmed: false,
+      shake_confirmed: false, vita_coco_confirmed: false, snack_confirmed: false,
       cal_total: totals.cal,
       protein_total: totals.protein,
       sodium_total: totals.sodium,
@@ -130,6 +130,11 @@ export default function Home() {
     if (log.dinner_confirmed && meals.dinner) {
       const d = meals.dinner.totals
       consumed.cal += d.cal; consumed.protein += d.protein; consumed.sodium += d.sodium; consumed.fiber += d.fiber; consumed.carbs += d.carbs
+    }
+    // Snack
+    if ((log as any).snack_confirmed && meals.snack) {
+      const sn = meals.snack.totals
+      consumed.cal += sn.cal; consumed.protein += sn.protein; consumed.sodium += sn.sodium; consumed.fiber += sn.fiber; consumed.carbs += sn.carbs
     }
     // Quick adds (banana, extras etc — NOT Fairlife)
     quickAdds.forEach(qa => {
@@ -235,7 +240,7 @@ export default function Home() {
           {meals.shake && <MealCard meal={meals.shake} label="Protein Shake" emoji="🥛" confirmed={(log as any).shake_confirmed || false} onConfirm={confirmShake} />}
           {meals.vitaCoco && <MealCard meal={meals.vitaCoco} label="Post-Gym Electrolytes" emoji="🥥" confirmed={(log as any).vita_coco_confirmed || false} onConfirm={confirmVitaCoco} />}
           <MealCard meal={meals.dinner} label="Dinner" emoji="🍽️" confirmed={log.dinner_confirmed} onConfirm={() => updateLog({ dinner_confirmed: true })} onSwap={swapOptions.length > 0 ? () => setShowSwap('dinner') : undefined} swappable={swapOptions.length > 0} />
-          {meals.snack && <MealCard meal={meals.snack} label="Snack" emoji="🍊" confirmed={false} onConfirm={() => {}} />}
+          {meals.snack && <MealCard meal={meals.snack} label="Snack" emoji="🍊" confirmed={(log as any).snack_confirmed || false} onConfirm={() => updateLog({ snack_confirmed: true })} />}
         </div>
       )}
 
