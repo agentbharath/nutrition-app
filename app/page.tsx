@@ -79,7 +79,7 @@ export default function Home() {
     const totals = calculateDayTotals(dayType, gymDay)
     const { data } = await supabase.from('daily_logs').upsert({
       date: today, day_type: dayType, gym_day: gymDay,
-      breakfast_confirmed: true, breakfast_override: false,
+      breakfast_confirmed: dayType !== 'sunday_fast', // Sunday fast = manual confirm
       lunch_confirmed: false, dinner_confirmed: false,
       shake_confirmed: false, vita_coco_confirmed: false, snack_confirmed: false,
       cal_total: totals.cal, protein_total: totals.protein,
@@ -185,7 +185,7 @@ export default function Home() {
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
-      <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: "var(--accent)", borderTopColor: "transparent" }} />
     </div>
   )
 
@@ -235,7 +235,7 @@ export default function Home() {
       </div>
 
       {log ? (
-        <div className="mx-4 mb-4 bg-gradient-to-r from-[#111111] to-[#0D1A14] border border-emerald-500/10 rounded-2xl p-4 flex items-center justify-between">
+        <div className="mx-4 mb-4 rounded-2xl p-4 flex items-center justify-between day-banner">
           <div className="flex items-center gap-3">
             <span className="text-2xl">{dayLabel?.emoji}</span>
             <div>
@@ -243,11 +243,11 @@ export default function Home() {
               <p className="t-muted text-xs">{log.gym_day ? '🏋️ Gym day' : '🛋️ Rest day'}</p>
             </div>
           </div>
-          <button onClick={() => setShowDaySelector(true)} className="text-xs text-emerald-500 border border-emerald-500/30 rounded-lg px-3 py-1.5 hover:bg-emerald-500/10 transition-colors">Change</button>
+          <button onClick={() => setShowDaySelector(true)} className="text-xs btn-confirm rounded-lg px-3 py-1.5">Change</button>
         </div>
       ) : (
         <div className="mx-4 mb-4">
-          <button onClick={() => setShowDaySelector(true)} className="w-full bg-emerald-500 text-black font-bold rounded-2xl p-4 text-sm hover:bg-emerald-400 transition-colors">📅 Set Today&apos;s Plan</button>
+          <button onClick={() => setShowDaySelector(true)} className="w-full font-bold rounded-2xl p-4 text-sm btn-confirm">📅 Set Today&apos;s Plan</button>
         </div>
       )}
 
@@ -255,7 +255,7 @@ export default function Home() {
         <div className="mx-4 mb-4 t-card2 border t-border rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs t-muted uppercase tracking-wider">Today&apos;s Progress</p>
-            <button onClick={() => setShowQuickAdd(true)} className="text-xs text-emerald-500 border border-emerald-500/30 rounded-lg px-2.5 py-1 hover:bg-emerald-500/10 transition-colors">➕ Quick Add</button>
+            <button onClick={() => setShowQuickAdd(true)} className="text-xs btn-confirm rounded-lg px-2.5 py-1">➕ Quick Add</button>
           </div>
           <div className="grid grid-cols-5 gap-1">
             <ProgressRing label="Cal" value={consumed.cal} target={TARGETS.cal} unit="" color="#10B981" />
@@ -266,7 +266,7 @@ export default function Home() {
           </div>
           <div className="mt-3 pt-3 border-t t-border grid grid-cols-3 gap-2 text-center">
             <div>
-              <p className="text-emerald-500 font-bold text-sm">{Math.max(0, Math.round(TARGETS.cal - consumed.cal))}</p>
+              <p className="t-accent font-bold text-sm">{Math.max(0, Math.round(TARGETS.cal - consumed.cal))}</p>
               <p className="t-muted text-xs">cal left</p>
             </div>
             <div>
@@ -276,7 +276,7 @@ export default function Home() {
               <p className="t-muted text-xs">Na left</p>
             </div>
             <div>
-              <p className={`font-bold text-sm ${consumed.protein >= TARGETS.protein ? 'text-emerald-500' : 't-text'}`}>
+              <p className={`font-bold text-sm ${consumed.protein >= TARGETS.protein ? 't-accent' : 't-text'}`}>
                 {consumed.protein >= TARGETS.protein ? '✓ Done' : `${Math.round(TARGETS.protein - consumed.protein)}g`}
               </p>
               <p className="t-muted text-xs">protein</p>
@@ -287,7 +287,7 @@ export default function Home() {
               <p className="text-xs t-muted mb-2">Quick adds:</p>
               <div className="flex flex-wrap gap-1">
                 {quickAdds.map((qa, i) => (
-                  <span key={i} className="macro-pill rounded-lg px-2 py-1 text-xs text-gray-400 flex items-center gap-1.5">
+                  <span key={i} className="macro-pill rounded-lg px-2 py-1 text-xs t-text2 flex items-center gap-1.5">
                     {qa.emoji} {qa.name} +{qa.cal}cal
                     {qa.id && (
                       <button onClick={() => removeQuickAdd(qa.id!)} className="t-muted hover:text-red-400 transition-colors ml-0.5">×</button>
@@ -301,13 +301,13 @@ export default function Home() {
       )}
 
       {log?.gym_day && (
-        <div className="mx-4 mb-4 bg-emerald-500/10 border border-emerald-500/30 rounded-xl p-3">
-          <p className="text-emerald-400 text-xs font-semibold">🏋️ GYM DAY PROTOCOL</p>
-          <p className="text-emerald-400/60 text-xs mt-1">Salt + water 30 min before → Vita Coco after → Fairlife at home</p>
+        <div className="mx-4 mb-4 rounded-xl p-3" style={{ background: "var(--accent-dim)", border: "1px solid var(--accent-border)" }}>
+          <p className="text-xs font-semibold t-accent">🏋️ GYM DAY PROTOCOL</p>
+          <p className="text-xs mt-1 t-muted">Salt + water 30 min before → Vita Coco after → Fairlife at home</p>
         </div>
       )}
       {log?.day_type === 'wfh_chipotle' && (
-        <div className="mx-4 mb-4 bg-red-500/10 border border-red-500/30 rounded-xl p-3">
+        <div className="mx-4 mb-4 rounded-xl p-3" style={{ background: "rgba(239,68,68,0.08)", border: "1px solid rgba(239,68,68,0.25)" }}>
           <p className="text-red-400 text-xs font-semibold">⚠️ CHIPOTLE ORDER RULES</p>
           <p className="text-red-400/60 text-xs mt-1">NO salsa • NO cheese • NO Fairlife today</p>
         </div>
@@ -385,7 +385,7 @@ export default function Home() {
       )}
 
       <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bottom-nav border-t t-border flex">
-        <button className="flex-1 py-4 text-emerald-400 flex flex-col items-center gap-1">
+        <button className="flex-1 py-4 t-accent flex flex-col items-center gap-1">
           <span className="text-lg">📋</span><span className="text-xs font-semibold">Today</span>
         </button>
         <Link href="/history" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">

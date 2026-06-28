@@ -51,10 +51,10 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-md bg-[#141414] border-t border-[#222] rounded-t-3xl p-6 pb-8 max-h-[80vh] overflow-y-auto">
+      <div className="relative w-full max-w-md t-card border-t t-border rounded-t-3xl p-6 pb-8 max-h-[80vh] overflow-y-auto">
         <div className="w-10 h-1 bg-[#333] rounded-full mx-auto mb-6" />
         <h2 className="text-lg font-bold mb-1">Quick Add</h2>
-        <p className="text-gray-500 text-sm mb-5">Add something extra you had — updates your daily totals</p>
+        <p className="t-muted text-sm mb-5">Add something extra you had — updates your daily totals</p>
 
         {!custom ? (
           <>
@@ -63,27 +63,27 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
                 <button
                   key={item.name}
                   onClick={() => onAdd(item)}
-                  className="w-full bg-[#1A1A1A] border border-[#222] rounded-xl p-3 text-left hover:border-emerald-500/50 hover:bg-emerald-500/5 transition-all flex items-center justify-between"
+                  className="w-full t-card2 border t-border rounded-xl p-3 text-left hover:border-emerald-500/50 hover:bg-[var(--accent)]/5 transition-all flex items-center justify-between"
                 >
                   <div className="flex items-center gap-3">
                     <span className="text-xl">{item.emoji}</span>
                     <div>
                       <p className="text-sm font-medium">{item.name}</p>
                       <div className="flex gap-2 mt-0.5">
-                        <span className="text-xs text-gray-500">{item.cal} cal</span>
+                        <span className="text-xs t-muted">{item.cal} cal</span>
                         <span className="text-xs text-blue-400">{item.protein}g P</span>
                         <span className="text-xs text-amber-400">{item.sodium}mg Na</span>
                         <span className="text-xs text-pink-400">{item.carbs}g C</span>
                       </div>
                     </div>
                   </div>
-                  <span className="text-emerald-500 text-lg">+</span>
+                  <span className="t-accent text-lg">+</span>
                 </button>
               ))}
             </div>
             <button
               onClick={() => setCustom(true)}
-              className="w-full border border-[#333] text-gray-400 rounded-xl py-3 text-sm hover:text-white hover:border-[#555] transition-colors"
+              className="w-full border t-border text-gray-400 rounded-xl py-3 text-sm hover:t-text hover:border-[#555] transition-colors"
             >
               ✎ Add something else manually
             </button>
@@ -99,16 +99,16 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
                 { label: 'Carbs', key: 'carbs', val: carbs, set: setCarbs, placeholder: 'e.g. 27', unit: 'g' },
               ].map(({ label, key, val, set, placeholder, unit }) => (
                 <div key={key}>
-                  <label className="text-xs text-gray-500 uppercase tracking-wider">{label}</label>
+                  <label className="text-xs t-muted uppercase tracking-wider">{label}</label>
                   <div className="flex items-center gap-2 mt-1">
                     <input
                       type={key === 'name' ? 'text' : 'number'}
                       value={val}
                       onChange={e => set(e.target.value)}
                       placeholder={placeholder}
-                      className="flex-1 bg-[#1A1A1A] border border-[#222] rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50 text-white placeholder-gray-600"
+                      className="flex-1 t-card2 border t-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50 t-text placeholder-gray-600"
                     />
-                    {unit && <span className="text-gray-500 text-sm w-8">{unit}</span>}
+                    {unit && <span className="t-muted text-sm w-8">{unit}</span>}
                   </div>
                 </div>
               ))}
@@ -116,11 +116,11 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
             <button
               onClick={handleCustomSave}
               disabled={!name || !cal}
-              className="w-full bg-emerald-500 disabled:bg-[#222] disabled:text-gray-600 text-black font-bold rounded-xl py-3 text-sm hover:bg-emerald-400 transition-colors mb-2"
+              className="w-full bg-[var(--accent)] disabled:macro-pill disabled:t-muted text-black font-bold rounded-xl py-3 text-sm  transition-colors mb-2"
             >
               Add to Today
             </button>
-            <button onClick={() => setCustom(false)} className="w-full text-gray-500 text-sm py-2 hover:text-white transition-colors">
+            <button onClick={() => setCustom(false)} className="w-full t-muted text-sm py-2 hover:t-text transition-colors">
               ← Back to quick items
             </button>
           </>

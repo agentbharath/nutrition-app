@@ -56,7 +56,7 @@ export default function HistoryPage() {
         <div className="text-center py-20">
           <p className="text-4xl mb-3">📋</p>
           <p className="t-muted text-sm">No history yet. Start tracking today!</p>
-          <Link href="/" className="text-emerald-500 text-sm mt-2 inline-block">Go to Today →</Link>
+          <Link href="/" className="t-accent text-sm mt-2 inline-block">Go to Today →</Link>
         </div>
       ) : (
         <div className="px-4 space-y-2">
@@ -76,7 +76,7 @@ export default function HistoryPage() {
                       <p className="font-semibold text-sm">{formatDate(log.date)}</p>
                       <div className="flex items-center gap-1">
                         {issues.length === 0
-                          ? <span className="text-xs text-emerald-500 bg-emerald-500/10 rounded-lg px-2 py-0.5">✓ On track</span>
+                          ? <span className="text-xs t-accent bg-[var(--accent)]/10 rounded-lg px-2 py-0.5">✓ On track</span>
                           : issues.map(i => <span key={i} className="text-xs text-amber-500 bg-amber-500/10 rounded-lg px-2 py-0.5">{i}</span>)
                         }
                       </div>
@@ -101,8 +101,8 @@ export default function HistoryPage() {
                       ].map(({ label, value, target, unit }) => {
                         const pct = (Number(value) / target) * 100
                         const color = label === 'Sodium'
-                          ? pct > 100 ? 'text-red-400' : pct > 85 ? 'text-amber-400' : 'text-emerald-400'
-                          : pct >= 70 ? 'text-emerald-400' : pct >= 50 ? 'text-amber-400' : 't-muted'
+                          ? pct > 100 ? 'text-red-400' : pct > 85 ? 'text-amber-400' : 't-accent'
+                          : pct >= 70 ? 't-accent' : pct >= 50 ? 'text-amber-400' : 't-muted'
                         return (
                           <div key={label}>
                             <p className={`font-bold text-sm ${color}`}>{Math.round(Number(value))}{unit}</p>
@@ -129,7 +129,7 @@ export default function HistoryPage() {
         <Link href="/" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
           <span className="text-lg">📋</span><span className="text-xs">Today</span>
         </Link>
-        <button className="flex-1 py-4 text-emerald-500 flex flex-col items-center gap-1">
+        <button className="flex-1 py-4 t-accent flex flex-col items-center gap-1">
           <span className="text-lg">📅</span><span className="text-xs font-medium">History</span>
         </button>
         <Link href="/settings" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
