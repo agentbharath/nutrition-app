@@ -44,8 +44,9 @@ interface GoogleTokenResponse {
 
 interface RollupSpec {
   dataType: string
-  valuePath: string[]
-  transform?: (value: number) => number
+  rollupField: string
+  valuePaths: string[][]
+  combine?: (record: Record<string, unknown>) => number | null
 }
 
 const PROVIDER: HealthProvider = 'google_health'
@@ -53,40 +54,62 @@ const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
 const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 const GOOGLE_HEALTH_API_BASE = 'https://health.googleapis.com'
 const GOOGLE_HEALTH_SCOPES = [
-  'https://www.googleapis.com/auth/fitness.activity.read',
-  'https://www.googleapis.com/auth/fitness.heart_rate.read',
-  'https://www.googleapis.com/auth/fitness.sleep.read',
-  'https://www.googleapis.com/auth/fitness.body.read',
+  'https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly',
+  'https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly',
+  'https://www.googleapis.com/auth/googlehealth.sleep.readonly',
 ]
 
 const DAILY_ROLLUPS: Record<string, RollupSpec> = {
   steps: {
-    dataType: 'com.google.step_count.delta',
-    valuePath: ['step_count_delta', 'intVal'],
+    dataType: 'steps',
+    rollupField: 'steps',
+    valuePaths: [['countSum']],
   },
-  calories_out: {
-    dataType: 'com.google.calories.expended',
-    valuePath: ['calories_expended', 'fpVal'],
+  total_calories: {
+    dataType: 'total-calories',
+    rollupField: 'totalCalories',
+    valuePaths: [['kcalSum']],
+  },
+  active_energy: {
+    dataType: 'active-energy-burned',
+    rollupField: 'activeEnergyBurned',
+    valuePaths: [['kcalSum']],
   },
   active_minutes: {
-    dataType: 'com.google.active_minutes',
-    valuePath: ['active_minutes', 'intVal'],
+    dataType: 'active-minutes',
+    rollupField: 'activeMinutes',
+    valuePaths: [['activeMinutesRollupByActivityLevel', 'activeMinutesSum']],
+    combine: (record) => sumNestedNumbers(record.activeMinutesRollupByActivityLevel, 'activeMinutesSum'),
   },
   active_zone_minutes: {
-    dataType: 'com.google.active_zone_minutes',
-    valuePath: ['active_zone_minutes', 'intVal'],
+    dataType: 'active-zone-minutes',
+    rollupField: 'activeZoneMinutes',
+    valuePaths: [['sumInCardioHeartZone'], ['sumInPeakHeartZone'], ['sumInFatBurnHeartZone']],
+    combine: (record) => sumNumbers(
+      numberOrNull(record.sumInCardioHeartZone),
+      numberOrNull(record.sumInPeakHeartZone),
+      numberOrNull(record.sumInFatBurnHeartZone)
+    ),
   },
   resting_heart_rate: {
-    dataType: 'com.google.heart_rate.bpm',
-    valuePath: ['heart_rate_bpm', 'fpVal'],
+    dataType: 'daily-resting-heart-rate',
+    rollupField: 'restingHeartRatePersonalRange',
+    valuePaths: [['beatsPerMinuteMin'], ['beatsPerMinuteMax']],
+    combine: (record) => averageNumbers(numberOrNull(record.beatsPerMinuteMin), numberOrNull(record.beatsPerMinuteMax)),
   },
   weight_kg: {
-    dataType: 'com.google.weight',
-    valuePath: ['weight', 'fpVal'],
+    dataType: 'weight',
+    rollupField: 'weight',
+    valuePaths: [['weightGramsAvg']],
+    combine: (record) => {
+      const grams = numberOrNull(record.weightGramsAvg)
+      return grams === null ? null : grams / 1000
+    },
   },
   body_fat_pct: {
-    dataType: 'com.google.body.fat.percentage',
-    valuePath: ['body_fat_percentage', 'fpVal'],
+    dataType: 'body-fat',
+    rollupField: 'bodyFat',
+    valuePaths: [['bodyFatPercentageAvg']],
   },
 }
 
@@ -240,8 +263,8 @@ export async function syncGoogleHealthDate(date: string, supabase = createServic
   const entries = await Promise.all(
     Object.entries(DAILY_ROLLUPS).map(async ([key, spec]) => {
       const rollup = await googleDailyRollupOptional(connection.access_token, spec.dataType, date)
-      const value = getNumberAtPath(rollup, spec.valuePath) ?? firstNumberNearKey(rollup, spec.valuePath[0])
-      return [key, spec.transform && value !== null ? spec.transform(value) : value, rollup] as const
+      const value = extractRollupValue(rollup, spec)
+      return [key, value, rollup] as const
     })
   )
 
@@ -252,8 +275,8 @@ export async function syncGoogleHealthDate(date: string, supabase = createServic
     provider: PROVIDER,
     date,
     steps: roundOrNull(values.steps),
-    calories_out: roundOrNull(values.calories_out),
-    activity_calories: roundOrNull(values.calories_out),
+    calories_out: roundOrNull(values.total_calories),
+    activity_calories: roundOrNull(values.active_energy),
     active_minutes: roundOrNull(values.active_minutes),
     active_zone_minutes: roundOrNull(values.active_zone_minutes),
     resting_heart_rate: roundOrNull(values.resting_heart_rate),
@@ -337,7 +360,10 @@ async function googleDailyRollupOptional(accessToken: string, dataType: string, 
     return await googleDailyRollup(accessToken, dataType, date)
   } catch (error) {
     console.error(error)
-    return {}
+    return {
+      error: error instanceof Error ? error.message : String(error),
+      dataType,
+    }
   }
 }
 
@@ -348,7 +374,11 @@ async function googleDailyRollup(accessToken: string, dataType: string, date: st
       authorization: `Bearer ${accessToken}`,
       'content-type': 'application/json',
     },
-    body: JSON.stringify({ civilDate: toCivilDate(date) }),
+    body: JSON.stringify({
+      range: toCivilDayRange(date),
+      windowSizeDays: 1,
+      dataSourceFamily: 'users/me/dataSourceFamilies/all-sources',
+    }),
   })
   const data = await response.json()
   if (!response.ok) {
@@ -361,9 +391,15 @@ function base64Url(buffer: Buffer) {
   return buffer.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
 }
 
-function toCivilDate(date: string) {
+function toCivilDayRange(date: string) {
   const [year, month, day] = date.split('-').map(Number)
-  return { year, month, day }
+  const next = new Date(`${date}T12:00:00.000Z`)
+  next.setUTCDate(next.getUTCDate() + 1)
+  const [endYear, endMonth, endDay] = next.toISOString().slice(0, 10).split('-').map(Number)
+  return {
+    start: { date: { year, month, day }, time: { hours: 0, minutes: 0, seconds: 0, nanos: 0 } },
+    end: { date: { year: endYear, month: endMonth, day: endDay }, time: { hours: 0, minutes: 0, seconds: 0, nanos: 0 } },
+  }
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -379,42 +415,19 @@ function getNumberAtPath(value: unknown, path: string[]): number | null {
   return numberOrNull(cursor)
 }
 
-function firstNumberNearKey(value: unknown, targetKey: string): number | null {
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const found = firstNumberNearKey(item, targetKey)
-      if (found !== null) return found
+function extractRollupValue(rollup: unknown, spec: RollupSpec) {
+  const points = Array.isArray(asRecord(rollup).rollupDataPoints) ? asRecord(rollup).rollupDataPoints as unknown[] : []
+  for (const point of points) {
+    const valueRecord = asRecord(asRecord(point)[spec.rollupField])
+    if (!Object.keys(valueRecord).length) continue
+    if (spec.combine) {
+      const combined = spec.combine(valueRecord)
+      if (combined !== null) return combined
     }
-    return null
-  }
-  const record = asRecord(value)
-  if (!Object.keys(record).length) return null
-  const direct = numberOrNull(record[targetKey])
-  if (direct !== null) return direct
-  for (const [key, child] of Object.entries(record)) {
-    if (key.toLowerCase().includes(targetKey.toLowerCase())) {
-      const nested = firstPlainNumber(child)
-      if (nested !== null) return nested
+    for (const path of spec.valuePaths) {
+      const value = getNumberAtPath(valueRecord, path)
+      if (value !== null) return value
     }
-    const found = firstNumberNearKey(child, targetKey)
-    if (found !== null) return found
-  }
-  return null
-}
-
-function firstPlainNumber(value: unknown): number | null {
-  const number = numberOrNull(value)
-  if (number !== null) return number
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const found = firstPlainNumber(item)
-      if (found !== null) return found
-    }
-    return null
-  }
-  for (const child of Object.values(asRecord(value))) {
-    const found = firstPlainNumber(child)
-    if (found !== null) return found
   }
   return null
 }
@@ -422,6 +435,21 @@ function firstPlainNumber(value: unknown): number | null {
 function numberOrNull(value: unknown) {
   const number = typeof value === 'number' ? value : typeof value === 'string' ? Number(value) : NaN
   return Number.isFinite(number) ? number : null
+}
+
+function sumNestedNumbers(value: unknown, field: string) {
+  if (!Array.isArray(value)) return null
+  return sumNumbers(...value.map((item) => numberOrNull(asRecord(item)[field])))
+}
+
+function sumNumbers(...values: Array<number | null>) {
+  const valid = values.filter((value): value is number => typeof value === 'number')
+  return valid.length ? valid.reduce((sum, value) => sum + value, 0) : null
+}
+
+function averageNumbers(...values: Array<number | null>) {
+  const valid = values.filter((value): value is number => typeof value === 'number')
+  return valid.length ? valid.reduce((sum, value) => sum + value, 0) / valid.length : null
 }
 
 function roundOrNull(value: number | null | undefined) {
