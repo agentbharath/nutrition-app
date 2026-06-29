@@ -146,11 +146,19 @@ export default function SettingsPage() {
           </div>
         </details>
 
+        {/* MEALS */}
+        <Link href="/meals" className="t-card rounded-2xl p-4 flex items-center justify-between gap-3 hover:opacity-90 transition-opacity">
+          <div>
+            <p className="font-semibold text-sm t-text mb-0.5">Meal Library</p>
+            <p className="text-xs t-muted">View available day plans, meals, ingredients, and swaps</p>
+          </div>
+          <span className="text-lg t-accent">→</span>
+        </Link>
 
                 {/* NOTIFICATIONS */}
         <div className="t-card rounded-2xl p-4">
           <p className="font-semibold text-sm t-text mb-0.5">Push Notifications</p>
-          <p className="text-xs t-muted mb-3">12 PM lunch • 6 PM dinner • Pacific time daily</p>
+          <p className="text-xs t-muted mb-3">12 PM lunch • 6 PM dinner • 12 AM daily recap • weekly report</p>
           {notifStatus === 'unsupported' && (
             <div className="rounded-xl p-3" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
               <p className="text-xs" style={{ color: 'var(--amber)' }}>⚠️ Install app to home screen first, then enable notifications here</p>
@@ -171,7 +179,7 @@ export default function SettingsPage() {
           )}
           {subscribed && (
             <div className="mt-3 space-y-1.5">
-              {['12:00 PM PT — Lunch reminder', '6:00 PM PT — Dinner reminder'].map(t => (
+              {['12:00 PM PT — Lunch reminder', '6:00 PM PT — Dinner reminder', '12:00 AM PST — Daily nutrition recap', 'Monday 12:00 AM PST — Weekly nutrition report'].map(t => (
                 <div key={t} className="flex justify-between text-xs">
                   <span className="t-muted">{t}</span>
                   <span className="t-accent">✓ Active</span>
