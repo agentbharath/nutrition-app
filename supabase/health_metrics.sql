@@ -25,6 +25,7 @@ create table if not exists health_daily_metrics (
   very_active_minutes integer,
   active_minutes integer,
   active_zone_minutes integer,
+  cardio_load integer,
   resting_heart_rate integer,
   sleep_minutes integer,
   sleep_efficiency integer,
@@ -53,7 +54,8 @@ end $$;
 
 alter table health_daily_metrics
   add column if not exists readiness_score integer,
-  add column if not exists readiness_note text;
+  add column if not exists readiness_note text,
+  add column if not exists cardio_load integer;
 
 create or replace function set_health_updated_at()
 returns trigger as $$

@@ -354,7 +354,7 @@ function buildHealthFoodRows(dates: string[], health: HealthDailyMetrics[], anal
         ? Math.round((metrics.sleep_minutes / 60) * 10) / 10
         : null,
       activeMinutes: metrics?.active_minutes || null,
-      cardioLoad: metrics?.active_zone_minutes || null,
+      cardioLoad: metrics?.cardio_load || null,
     }
   })
 }

@@ -62,6 +62,7 @@ export interface HealthDailyMetrics {
   very_active_minutes?: number | null
   active_minutes?: number | null
   active_zone_minutes?: number | null
+  cardio_load?: number | null
   resting_heart_rate?: number | null
   sleep_minutes?: number | null
   sleep_efficiency?: number | null

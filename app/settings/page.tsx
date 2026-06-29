@@ -177,6 +177,7 @@ export default function SettingsPage() {
     latestHealth.activity_calories,
     latestHealth.active_minutes,
     latestHealth.active_zone_minutes,
+    latestHealth.cardio_load,
     latestHealth.resting_heart_rate,
     latestHealth.sleep_minutes,
     latestHealth.weight_kg,

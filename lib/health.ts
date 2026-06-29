@@ -27,6 +27,7 @@ export interface HealthDailyMetrics {
   very_active_minutes?: number | null
   active_minutes?: number | null
   active_zone_minutes?: number | null
+  cardio_load?: number | null
   resting_heart_rate?: number | null
   sleep_minutes?: number | null
   sleep_efficiency?: number | null
@@ -87,11 +88,7 @@ const DAILY_ROLLUPS: Record<string, RollupSpec> = {
     dataType: 'active-zone-minutes',
     rollupField: 'activeZoneMinutes',
     valuePaths: [['sumInCardioHeartZone'], ['sumInPeakHeartZone'], ['sumInFatBurnHeartZone']],
-    combine: (record) => sumNumbers(
-      numberOrNull(record.sumInCardioHeartZone),
-      numberOrNull(record.sumInPeakHeartZone),
-      numberOrNull(record.sumInFatBurnHeartZone)
-    ),
+    combine: calculateActiveZoneMinutes,
   },
   resting_heart_rate: {
     dataType: 'daily-resting-heart-rate',
@@ -277,6 +274,7 @@ export async function syncGoogleHealthDate(date: string, supabase = createServic
     sleep: sleep.raw,
   } as Record<string, unknown>
   const activeByLevel = extractActiveMinutesByLevel(raw.active_minutes)
+  const cardioLoad = calculateCardioLoadFromRollup(raw.active_zone_minutes)
   const readiness = calculateReadinessScore({
     steps: roundOrNull(values.steps),
     activity_calories: roundOrNull(values.active_energy),
@@ -295,6 +293,7 @@ export async function syncGoogleHealthDate(date: string, supabase = createServic
     very_active_minutes: roundOrNull(activeByLevel.vigorous),
     active_minutes: roundOrNull(values.active_minutes),
     active_zone_minutes: roundOrNull(values.active_zone_minutes),
+    cardio_load: roundOrNull(cardioLoad),
     resting_heart_rate: roundOrNull(values.resting_heart_rate),
     sleep_minutes: roundOrNull(sleep.minutes),
     sleep_efficiency: roundOrNull(sleep.efficiency),
@@ -370,6 +369,7 @@ export function compactHealthMetrics(metrics?: HealthDailyMetrics | null) {
     fairly_active_minutes: metrics.fairly_active_minutes,
     very_active_minutes: metrics.very_active_minutes,
     active_zone_minutes: metrics.active_zone_minutes,
+    cardio_load: metrics.cardio_load,
     resting_heart_rate: metrics.resting_heart_rate,
     sleep_minutes: metrics.sleep_minutes,
     sleep_efficiency: metrics.sleep_efficiency,
@@ -557,6 +557,7 @@ async function upsertHealthMetrics(supabase: SupabaseClient, metrics: HealthDail
   const fallbackMetrics = { ...metrics }
   delete fallbackMetrics.readiness_score
   delete fallbackMetrics.readiness_note
+  delete fallbackMetrics.cardio_load
   return supabase
     .from('health_daily_metrics')
     .upsert(fallbackMetrics, { onConflict: 'provider,date' })
@@ -568,6 +569,7 @@ function isMissingColumnError(message?: string) {
   return Boolean(message && (
     message.includes('readiness_score') ||
     message.includes('readiness_note') ||
+    message.includes('cardio_load') ||
     message.includes('schema cache') ||
     message.includes('Could not find')
   ))
@@ -636,6 +638,39 @@ function extractActiveMinutesByLevel(rollup: unknown) {
     })
   }
   return result
+}
+
+function calculateActiveZoneMinutes(record: Record<string, unknown>) {
+  const zones = getHeartZoneMinutes(record)
+  if (!zones.hasSignal) return null
+  return zones.fatBurn + zones.cardio * 2 + zones.peak * 2
+}
+
+function calculateCardioLoadFromRollup(rollup: unknown) {
+  const points = Array.isArray(asRecord(rollup).rollupDataPoints) ? asRecord(rollup).rollupDataPoints as unknown[] : []
+  let load = 0
+  let hasSignal = false
+
+  for (const point of points) {
+    const zones = getHeartZoneMinutes(asRecord(asRecord(point).activeZoneMinutes))
+    if (!zones.hasSignal) continue
+    hasSignal = true
+    load += zones.fatBurn + zones.cardio * 3 + zones.peak * 5
+  }
+
+  return hasSignal ? load : null
+}
+
+function getHeartZoneMinutes(record: Record<string, unknown>) {
+  const fatBurn = numberOrNull(record.sumInFatBurnHeartZone)
+  const cardio = numberOrNull(record.sumInCardioHeartZone)
+  const peak = numberOrNull(record.sumInPeakHeartZone)
+  return {
+    fatBurn: fatBurn || 0,
+    cardio: cardio || 0,
+    peak: peak || 0,
+    hasSignal: fatBurn !== null || cardio !== null || peak !== null,
+  }
 }
 
 function numberOrNull(value: unknown) {
