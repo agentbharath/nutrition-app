@@ -119,7 +119,7 @@ export default function MonitorPage() {
                       style={{
                         minWidth: 76,
                         background: active ? 'var(--accent)' : 'var(--card)',
-                        color: active ? 'var(--accent-text)' : 'var(--text)',
+                        color: active ? '#ffffff' : 'var(--text)',
                         border: active ? '1px solid var(--accent)' : '1px solid var(--border)',
                         boxShadow: active ? '0 8px 22px rgba(0,0,0,0.12)' : 'none',
                       }}
@@ -134,35 +134,54 @@ export default function MonitorPage() {
                 })}
               </div>
 
-              <div className="rounded-2xl p-4 macro-pill">
+              <div className="rounded-2xl p-4" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="text-xs t-muted uppercase tracking-wider">Selected day</p>
                     <h2 className="text-lg font-bold t-text mt-1">{formatMonitorDate(activeDate)}</h2>
                   </div>
-                  <p className="text-xs font-semibold t-accent text-right">
-                    {selectedRow.readiness !== null ? `${selectedRow.readiness} readiness` : 'No readiness'}
-                  </p>
+                  <p className="text-xs font-semibold t-accent text-right">{selectedRow.intake !== null ? `${selectedRow.intake} cal` : 'No food'}</p>
                 </div>
                 <p className="text-sm t-muted mt-2">{selectedRow.headline || selectedAnalysis.headline}</p>
 
-                <div className="grid grid-cols-5 gap-1.5 mt-4">
-                  {[
-                    ['Cal', selectedRow.intake !== null ? selectedRow.intake : '-'],
-                    ['P', selectedRow.protein !== null ? `${selectedRow.protein}g` : '-'],
-                    ['Na', selectedRow.sodium !== null ? `${selectedRow.sodium}mg` : '-'],
-                    ['Steps', selectedRow.steps !== null ? selectedRow.steps.toLocaleString() : '-'],
-                    ['Burn', selectedRow.burned !== null ? selectedRow.burned : '-'],
-                  ].map(([label, value]) => (
-                    <div key={label} className="rounded-lg p-1.5 text-center" style={{ background: 'var(--card)' }}>
-                      <p className="text-[10px] font-bold t-text leading-tight">{value}</p>
-                      <p className="text-[9px] t-muted leading-tight">{label}</p>
+                <div className="mt-4 space-y-3">
+                  <div>
+                    <p className="text-xs t-muted uppercase tracking-wider mb-2">Nutrition tracked</p>
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {[
+                        ['Cal', selectedRow.intake !== null ? selectedRow.intake : '-'],
+                        ['P', selectedRow.protein !== null ? `${selectedRow.protein}g` : '-'],
+                        ['Na', selectedRow.sodium !== null ? `${selectedRow.sodium}mg` : '-'],
+                        ['Fiber', selectedRow.fiber !== null ? `${selectedRow.fiber}g` : '-'],
+                        ['Carbs', selectedRow.carbs !== null ? `${selectedRow.carbs}g` : '-'],
+                      ].map(([label, value]) => (
+                        <div key={label} className="rounded-lg p-1.5 text-center macro-pill">
+                          <p className="text-[10px] font-bold t-text leading-tight">{value}</p>
+                          <p className="text-[9px] t-muted leading-tight">{label}</p>
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+
+                  <div>
+                    <p className="text-xs t-muted uppercase tracking-wider mb-2">Health tracked</p>
+                    <div className="grid grid-cols-5 gap-1.5">
+                      {[
+                        ['Steps', selectedRow.steps !== null ? selectedRow.steps.toLocaleString() : '-'],
+                        ['Burn', selectedRow.burned !== null ? selectedRow.burned : '-'],
+                        ['Sleep', selectedRow.sleepHours !== null ? `${selectedRow.sleepHours}h` : '-'],
+                        ['Sleep score', selectedRow.sleepScore !== null ? selectedRow.sleepScore : '-'],
+                        ['Ready', selectedRow.readiness !== null ? selectedRow.readiness : '-'],
+                      ].map(([label, value]) => (
+                        <div key={label} className="rounded-lg p-1.5 text-center macro-pill">
+                          <p className="text-[10px] font-bold t-text leading-tight">{value}</p>
+                          <p className="text-[9px] t-muted leading-tight">{label}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
-                <p className="text-[11px] t-muted mt-2">
-                  Fiber: {selectedRow.fiber !== null ? `${selectedRow.fiber}g` : '-'} • Sleep: {selectedRow.sleepHours !== null ? `${selectedRow.sleepHours}h` : 'not synced'}
-                </p>
+
                 {selectedRow.readinessNote && <p className="text-[10px] t-muted mt-1">{selectedRow.readinessNote}</p>}
               </div>
 
@@ -316,9 +335,11 @@ function buildHealthFoodRows(health: HealthDailyMetrics[], analyses: ReturnType<
     protein: number | null
     sodium: number | null
     fiber: number | null
+    carbs: number | null
     burned: number | null
     steps: number | null
     sleepHours: number | null
+    sleepScore: number | null
     readiness: number | null
     readinessNote: string | null
   }> = analyses.map((analysis) => {
@@ -330,11 +351,13 @@ function buildHealthFoodRows(health: HealthDailyMetrics[], analyses: ReturnType<
       protein: Math.round(analysis.totals.protein),
       sodium: Math.round(analysis.totals.sodium),
       fiber: Math.round(analysis.totals.fiber),
+      carbs: Math.round(analysis.totals.carbs),
       burned: metrics?.calories_out || null,
       steps: metrics?.steps || null,
       sleepHours: typeof metrics?.sleep_minutes === 'number'
         ? Math.round((metrics.sleep_minutes / 60) * 10) / 10
         : null,
+      sleepScore: metrics?.sleep_efficiency || null,
       readiness: metrics?.readiness_score || null,
       readinessNote: metrics?.readiness_note || null,
     }
@@ -349,11 +372,13 @@ function buildHealthFoodRows(health: HealthDailyMetrics[], analyses: ReturnType<
       protein: null,
       sodium: null,
       fiber: null,
+      carbs: null,
       burned: metrics.calories_out || null,
       steps: metrics.steps || null,
       sleepHours: typeof metrics.sleep_minutes === 'number'
         ? Math.round((metrics.sleep_minutes / 60) * 10) / 10
         : null,
+      sleepScore: metrics.sleep_efficiency || null,
       readiness: metrics.readiness_score || null,
       readinessNote: metrics.readiness_note || null,
     })

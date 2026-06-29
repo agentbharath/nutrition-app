@@ -15,7 +15,13 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({})) as { days?: number }
     const days = Math.min(Math.max(Number(body.days || (isCron ? 8 : 3)), 1), 14)
     const synced = await syncRecentHealthDays(days)
-    return NextResponse.json({ synced: synced.length, days })
+    const failed = synced.filter((item) => item && typeof item === 'object' && 'error' in item)
+    return NextResponse.json({
+      synced: synced.length - failed.length,
+      failed: failed.length,
+      days,
+      errors: failed,
+    })
   } catch (error) {
     console.error(error)
     return NextResponse.json({ error: 'Health sync failed.' }, { status: 500 })

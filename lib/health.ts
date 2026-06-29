@@ -93,6 +93,23 @@ const DAILY_ROLLUPS: Record<string, RollupSpec> = {
       numberOrNull(record.sumInFatBurnHeartZone)
     ),
   },
+  sleep_minutes: {
+    dataType: 'sleep',
+    rollupField: 'sleep',
+    valuePaths: [['sleepDurationMillisSum'], ['durationMillisSum'], ['sleepMinutesSum']],
+    combine: (record) => {
+      const minutes = firstNumberByKey(record, [/sleep.*minute/i, /minute.*sleep/i])
+      if (minutes !== null) return minutes
+      const millis = firstNumberByKey(record, [/sleep.*millis/i, /duration.*millis/i, /millis.*sleep/i])
+      return millis === null ? null : millis / 60000
+    },
+  },
+  sleep_efficiency: {
+    dataType: 'sleep',
+    rollupField: 'sleep',
+    valuePaths: [['sleepEfficiencyPercentageAvg'], ['efficiencyPercentageAvg'], ['sleepScoreAvg']],
+    combine: (record) => firstNumberByKey(record, [/efficiency/i, /sleep.*score/i]),
+  },
   resting_heart_rate: {
     dataType: 'daily-resting-heart-rate',
     rollupField: 'restingHeartRatePersonalRange',
@@ -277,7 +294,7 @@ export async function syncGoogleHealthDate(date: string, supabase = createServic
     steps: roundOrNull(values.steps),
     activity_calories: roundOrNull(values.active_energy),
     active_minutes: roundOrNull(values.active_minutes),
-    sleep_minutes: null,
+    sleep_minutes: roundOrNull(values.sleep_minutes),
   })
 
   const metrics: HealthDailyMetrics = {
@@ -292,8 +309,8 @@ export async function syncGoogleHealthDate(date: string, supabase = createServic
     active_minutes: roundOrNull(values.active_minutes),
     active_zone_minutes: roundOrNull(values.active_zone_minutes),
     resting_heart_rate: roundOrNull(values.resting_heart_rate),
-    sleep_minutes: null,
-    sleep_efficiency: null,
+    sleep_minutes: roundOrNull(values.sleep_minutes),
+    sleep_efficiency: roundOrNull(values.sleep_efficiency),
     readiness_score: readiness.score,
     readiness_note: readiness.note,
     weight_kg: values.weight_kg,
@@ -301,11 +318,7 @@ export async function syncGoogleHealthDate(date: string, supabase = createServic
     raw,
   }
 
-  const { data, error } = await supabase
-    .from('health_daily_metrics')
-    .upsert(metrics, { onConflict: 'provider,date' })
-    .select('*')
-    .single<HealthDailyMetrics>()
+  const { data, error } = await upsertHealthMetrics(supabase, metrics)
   if (error) throw error
 
   await supabase
@@ -321,7 +334,12 @@ export async function syncRecentHealthDays(daysBack = 7) {
   const dates = Array.from({ length: daysBack }, (_, index) => getPacificDate(-index))
   const results = []
   for (const date of dates) {
-    results.push(await syncGoogleHealthDate(date, supabase))
+    try {
+      results.push(await syncGoogleHealthDate(date, supabase))
+    } catch (error) {
+      console.error(`Health sync failed for ${date}`, error)
+      results.push({ date, error: error instanceof Error ? error.message : String(error) })
+    }
   }
   return results.filter(Boolean)
 }
@@ -407,6 +425,34 @@ async function googleDailyRollup(accessToken: string, dataType: string, date: st
   return data as Record<string, unknown>
 }
 
+async function upsertHealthMetrics(supabase: SupabaseClient, metrics: HealthDailyMetrics) {
+  const result = await supabase
+    .from('health_daily_metrics')
+    .upsert(metrics, { onConflict: 'provider,date' })
+    .select('*')
+    .single<HealthDailyMetrics>()
+
+  if (!result.error || !isMissingColumnError(result.error.message)) return result
+
+  const fallbackMetrics = { ...metrics }
+  delete fallbackMetrics.readiness_score
+  delete fallbackMetrics.readiness_note
+  return supabase
+    .from('health_daily_metrics')
+    .upsert(fallbackMetrics, { onConflict: 'provider,date' })
+    .select('*')
+    .single<HealthDailyMetrics>()
+}
+
+function isMissingColumnError(message?: string) {
+  return Boolean(message && (
+    message.includes('readiness_score') ||
+    message.includes('readiness_note') ||
+    message.includes('schema cache') ||
+    message.includes('Could not find')
+  ))
+}
+
 function base64Url(buffer: Buffer) {
   return buffer.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
 }
@@ -490,6 +536,26 @@ function sumNumbers(...values: Array<number | null>) {
 function averageNumbers(...values: Array<number | null>) {
   const valid = values.filter((value): value is number => typeof value === 'number')
   return valid.length ? valid.reduce((sum, value) => sum + value, 0) / valid.length : null
+}
+
+function firstNumberByKey(value: unknown, patterns: RegExp[]): number | null {
+  if (!value || typeof value !== 'object') return null
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = firstNumberByKey(item, patterns)
+      if (found !== null) return found
+    }
+    return null
+  }
+  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+    if (patterns.some((pattern) => pattern.test(key))) {
+      const number = numberOrNull(child)
+      if (number !== null) return number
+    }
+    const nested = firstNumberByKey(child, patterns)
+    if (nested !== null) return nested
+  }
+  return null
 }
 
 function roundOrNull(value: number | null | undefined) {
