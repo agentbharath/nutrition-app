@@ -436,8 +436,8 @@ async function googleDataPointsList(accessToken: string, dataType: string, date:
   const nextDate = getNextDateString(date)
   const url = new URL(`${GOOGLE_HEALTH_API_BASE}/v4/users/me/dataTypes/${encodeURIComponent(dataType)}/dataPoints`)
   url.searchParams.set('pageSize', '25')
-  url.searchParams.set('startTime', toPacificDateTime(date, '00:00:00'))
-  url.searchParams.set('endTime', toPacificDateTime(nextDate, '00:00:00'))
+  url.searchParams.set('start_time', toPacificDateTime(date, '00:00:00'))
+  url.searchParams.set('end_time', toPacificDateTime(nextDate, '00:00:00'))
   const response = await fetch(url, {
     headers: {
       authorization: `Bearer ${accessToken}`,
