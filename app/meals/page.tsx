@@ -3,6 +3,8 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { DayType } from '@/lib/supabase'
 import { DAY_TYPE_OPTIONS, Meal, SWAP_OPTIONS, calculateDayTotals, getDayMeals } from '@/lib/meals'
+import BottomNav from '@/components/BottomNav'
+import DayTypeIcon from '@/components/DayTypeIcon'
 
 type Mode = 'rest' | 'gym'
 type MealSlot = 'breakfast' | 'lunch' | 'shake' | 'vitaCoco' | 'dinner' | 'snack'
@@ -119,7 +121,10 @@ export default function MealsPage() {
                   className={`rounded-xl p-3 text-left transition-all relative ${active ? 'btn-primary' : 'btn-secondary'}`}
                 >
                   {active && <span className="absolute top-2 right-2 text-xs font-bold">✓</span>}
-                  <p className="text-sm font-semibold">{option.emoji} {option.label}</p>
+                  <div className="flex items-center gap-2">
+                    <DayTypeIcon dayType={option.value} size={16} />
+                    <p className="text-sm font-semibold">{option.label}</p>
+                  </div>
                   <p className="text-[11px] opacity-80 mt-1">{option.description}</p>
                 </button>
               )
@@ -130,7 +135,10 @@ export default function MealsPage() {
         <section className="t-card rounded-2xl p-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <p className="font-semibold text-sm t-text">{selectedOption.emoji} {selectedOption.label}</p>
+              <p className="font-semibold text-sm t-text flex items-center gap-2">
+                <DayTypeIcon dayType={selectedOption.value} size={16} />
+                {selectedOption.label}
+              </p>
               <p className="text-xs t-muted">{gymDay ? 'Gym variant' : 'Rest day variant'}</p>
             </div>
             <div className="macro-pill rounded-xl p-1 flex gap-1">
@@ -177,20 +185,7 @@ export default function MealsPage() {
         </section>
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bottom-nav flex">
-        <Link href="/" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
-          <span className="text-lg">📋</span><span className="text-[11px]">Today</span>
-        </Link>
-        <Link href="/history" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
-          <span className="text-lg">📅</span><span className="text-[11px]">History</span>
-        </Link>
-        <Link href="/monitor" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
-          <span className="text-lg">📈</span><span className="text-[11px]">Analysis</span>
-        </Link>
-        <Link href="/settings" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
-          <span className="text-lg">⚙️</span><span className="text-[11px]">Settings</span>
-        </Link>
-      </nav>
+      <BottomNav active="settings" />
     </main>
   )
 }

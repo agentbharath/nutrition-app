@@ -67,4 +67,5 @@ export interface HealthDailyMetrics {
   sleep_efficiency?: number | null
   weight_kg?: number | null
   body_fat_pct?: number | null
+  raw?: unknown
 }

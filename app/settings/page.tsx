@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { HealthDailyMetrics } from '@/lib/supabase'
 import { useTheme, THEMES, ThemeName } from '@/lib/theme'
+import BottomNav from '@/components/BottomNav'
+import { BellIcon, TrashIcon, WatchIcon } from '@/components/Icons'
 import Link from 'next/link'
 
 interface HealthStatus {
@@ -148,6 +150,7 @@ export default function SettingsPage() {
   }
 
   const latestHealth = healthStatus?.latest?.[0]
+  const healthNeedsReconnect = hasHealthScopeError(latestHealth)
 
   return (
     <main className="max-w-md mx-auto min-h-screen pb-24 t-bg">
@@ -225,7 +228,7 @@ export default function SettingsPage() {
               <p className="font-semibold text-sm t-text mb-0.5">Google Health Sync</p>
               <p className="text-xs t-muted">Fitbit Charge 6 activity, heart, body, and sleep context for Claude analysis</p>
             </div>
-            <span className="text-lg">⌚</span>
+            <WatchIcon size={22} className="t-muted" />
           </div>
 
           {healthLoading ? (
@@ -241,6 +244,12 @@ export default function SettingsPage() {
                 <span className="t-muted">Connected to Google Health</span>
                 <span className="t-accent font-semibold">✓ Active</span>
               </div>
+              {healthNeedsReconnect && (
+                <div className="rounded-xl p-3" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
+                  <p className="text-xs font-semibold" style={{ color: 'var(--amber)' }}>Reconnect required</p>
+                  <p className="text-xs t-muted mt-1">Google denied the current token because it was granted before the new Health scopes. Disconnect, connect again, then sync.</p>
+                </div>
+              )}
               {latestHealth && (
                 <div className="grid grid-cols-4 gap-1.5">
                   {[
@@ -309,7 +318,10 @@ export default function SettingsPage() {
               className="w-full py-3 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
               style={subscribed ? { background: 'rgba(239,68,68,0.1)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.3)' }
                 : { background: 'var(--accent-dim)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)' }}>
-              {loading ? 'Setting up...' : subscribed ? '🔕 Disable Notifications' : '🔔 Enable Notifications'}
+              <span className="inline-flex items-center justify-center gap-2">
+                <BellIcon size={16} />
+                {loading ? 'Setting up...' : subscribed ? 'Disable Notifications' : 'Enable Notifications'}
+              </span>
             </button>
           )}
           {subscribed && (
@@ -382,28 +394,28 @@ export default function SettingsPage() {
           <button onClick={resetToday} disabled={resetLoading || resetDone}
             className="w-full py-2.5 rounded-xl text-sm font-medium transition-all disabled:opacity-60"
             style={{ border: '1px solid rgba(239,68,68,0.3)', color: 'var(--red)' }}>
-            {resetDone ? '✓ Cleared — redirecting...' : resetLoading ? 'Clearing...' : '🗑 Reset Today'}
+            <span className="inline-flex items-center justify-center gap-2">
+              {!resetDone && !resetLoading && <TrashIcon size={15} />}
+              {resetDone ? '✓ Cleared — redirecting...' : resetLoading ? 'Clearing...' : 'Reset Today'}
+            </span>
           </button>
         </div>
 
       </div>
 
-      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bottom-nav flex">
-        <Link href="/" className="flex-1 py-4 flex flex-col items-center gap-1 t-muted hover:opacity-80 transition-opacity">
-          <span className="text-lg">📋</span><span className="text-[11px]">Today</span>
-        </Link>
-        <Link href="/history" className="flex-1 py-4 flex flex-col items-center gap-1 t-muted hover:opacity-80 transition-opacity">
-          <span className="text-lg">📅</span><span className="text-[11px]">History</span>
-        </Link>
-        <Link href="/monitor" className="flex-1 py-4 flex flex-col items-center gap-1 t-muted hover:opacity-80 transition-opacity">
-          <span className="text-lg">📈</span><span className="text-[11px]">Analysis</span>
-        </Link>
-        <button className="flex-1 py-4 flex flex-col items-center gap-1 t-accent">
-          <span className="text-lg">⚙️</span><span className="text-[11px] font-semibold">Settings</span>
-        </button>
-      </nav>
+      <BottomNav active="settings" />
     </main>
   )
+}
+
+function hasHealthScopeError(metrics?: HealthDailyMetrics) {
+  const raw = metrics?.raw
+  if (!raw || typeof raw !== 'object') return false
+  return Object.values(raw as Record<string, unknown>).some((value) => {
+    if (!value || typeof value !== 'object') return false
+    const error = (value as { error?: unknown }).error
+    return typeof error === 'string' && error.includes('ACCESS_TOKEN_SCOPE_INSUFFICIENT')
+  })
 }
 
 function urlBase64ToUint8Array(b: string) {

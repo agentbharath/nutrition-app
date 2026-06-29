@@ -5,6 +5,8 @@ import { supabase, DailyLog } from '@/lib/supabase'
 import type { HealthDailyMetrics } from '@/lib/supabase'
 import type { ClaudeNutritionReport } from '@/lib/claude-nutrition'
 import { analyzeFoodDay, formatMonitorDate, QuickAddEntry, toMonitorDay, weeklyScore } from '@/lib/nutrition-monitor'
+import BottomNav from '@/components/BottomNav'
+import { ChartIcon } from '@/components/Icons'
 
 interface AiReportRow {
   report_type: 'daily' | 'weekly'
@@ -84,7 +86,7 @@ export default function MonitorPage() {
         </div>
       ) : days.length === 0 ? (
         <div className="text-center py-20 px-4">
-          <p className="text-4xl mb-3">📈</p>
+          <ChartIcon size={44} className="mx-auto mb-3 t-muted" />
           <p className="t-muted text-sm">No logs yet. Track a few days and this page will light up.</p>
         </div>
       ) : latestAnalysis ? (
@@ -286,20 +288,7 @@ export default function MonitorPage() {
         null
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bottom-nav flex">
-        <Link href="/" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
-          <span className="text-lg">📋</span><span className="text-[11px]">Today</span>
-        </Link>
-        <Link href="/history" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
-          <span className="text-lg">📅</span><span className="text-[11px]">History</span>
-        </Link>
-        <button className="flex-1 py-4 t-accent flex flex-col items-center gap-1">
-          <span className="text-lg">📈</span><span className="text-[11px] font-semibold">Analysis</span>
-        </button>
-        <Link href="/settings" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
-          <span className="text-lg">⚙️</span><span className="text-[11px]">Settings</span>
-        </Link>
-      </nav>
+      <BottomNav active="analysis" />
     </main>
   )
 }

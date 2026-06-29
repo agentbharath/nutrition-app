@@ -4,6 +4,9 @@ import Link from 'next/link'
 import { supabase, DailyLog, DayType } from '@/lib/supabase'
 import { DAY_TYPE_OPTIONS } from '@/lib/meals'
 import { QuickAddEntry, analyzeFoodDay, formatMonitorDate } from '@/lib/nutrition-monitor'
+import BottomNav from '@/components/BottomNav'
+import { CalendarIcon } from '@/components/Icons'
+import DayTypeIcon from '@/components/DayTypeIcon'
 
 function toDateKey(date: Date) {
   return date.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
@@ -93,7 +96,7 @@ export default function HistoryPage() {
         </div>
       ) : logs.length === 0 ? (
         <div className="text-center py-20 px-4">
-          <p className="text-4xl mb-3">📅</p>
+          <CalendarIcon size={44} className="mx-auto mb-3 t-muted" />
           <p className="t-muted text-sm">No history yet. Start tracking today.</p>
           <Link href="/" className="t-accent text-sm mt-2 inline-block">Go to Today →</Link>
         </div>
@@ -120,7 +123,6 @@ export default function HistoryPage() {
                 const log = date ? logsByDate.get(date) : null
                 const selected = date === selectedDate
                 const today = date === todayKey
-                const dayInfo = log ? getDayLabel(log.day_type as DayType) : null
                 return (
                   <button
                     key={date || `empty-${index}`}
@@ -142,10 +144,8 @@ export default function HistoryPage() {
                     {selected && (
                       <span className="absolute top-1 right-1 text-[9px] leading-none font-bold">✓</span>
                     )}
-                    {log && (
-                      <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[9px] leading-none">
-                        {dayInfo?.emoji || '•'}
-                      </span>
+                    {log && !selected && (
+                      <span className="absolute bottom-1.5 left-1/2 h-1.5 w-1.5 -translate-x-1/2 rounded-full" style={{ background: today ? 'var(--amber)' : 'var(--accent)' }} />
                     )}
                   </button>
                 )
@@ -161,7 +161,10 @@ export default function HistoryPage() {
               </div>
               {selectedLog && (
                 <div className="text-right">
-                  <p className="text-sm font-semibold t-text">{getDayLabel(selectedLog.day_type as DayType)?.emoji} {getDayLabel(selectedLog.day_type as DayType)?.label}</p>
+                  <p className="text-sm font-semibold t-text flex items-center justify-end gap-1.5">
+                    <DayTypeIcon dayType={selectedLog.day_type as DayType} size={15} />
+                    {getDayLabel(selectedLog.day_type as DayType)?.label}
+                  </p>
                   <p className="text-xs t-muted">{selectedLog.gym_day ? 'Gym day' : 'Rest day'}</p>
                 </div>
               )}
@@ -240,20 +243,7 @@ export default function HistoryPage() {
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bottom-nav flex">
-        <Link href="/" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
-          <span className="text-lg">📋</span><span className="text-[11px]">Today</span>
-        </Link>
-        <button className="flex-1 py-4 t-accent flex flex-col items-center gap-1">
-          <span className="text-lg">📅</span><span className="text-[11px] font-semibold">History</span>
-        </button>
-        <Link href="/monitor" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
-          <span className="text-lg">📈</span><span className="text-[11px]">Analysis</span>
-        </Link>
-        <Link href="/settings" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
-          <span className="text-lg">⚙️</span><span className="text-[11px]">Settings</span>
-        </Link>
-      </nav>
+      <BottomNav active="history" />
     </main>
   )
 }

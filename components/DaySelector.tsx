@@ -2,6 +2,8 @@
 import { useState } from 'react'
 import { DayType } from '@/lib/supabase'
 import { DAY_TYPE_OPTIONS } from '@/lib/meals'
+import DayTypeIcon from './DayTypeIcon'
+import { DumbbellIcon, LeafIcon } from './Icons'
 
 interface Props {
   onSelect: (dayType: DayType, gymDay: boolean) => void
@@ -34,7 +36,7 @@ export default function DaySelector({ onSelect, onClose, saving }: Props) {
                   : 't-border hover:t-border'
               }`}
             >
-              <span className="text-xl block mb-1">{opt.emoji}</span>
+              <span className="block mb-2 t-accent"><DayTypeIcon dayType={opt.value} size={20} /></span>
               <p className="text-sm font-semibold leading-tight">{opt.label}</p>
               <p className="text-xs t-muted mt-0.5">{opt.description}</p>
             </button>
@@ -49,13 +51,13 @@ export default function DaySelector({ onSelect, onClose, saving }: Props) {
                 onClick={() => setGymDay(true)}
                 className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition-all ${gymDay ? 'border-emerald-500 bg-[var(--accent)]/10 t-accent' : 't-border text-gray-400 hover:t-border'}`}
               >
-                🏋️ Yes, gym today
+                <span className="inline-flex items-center justify-center gap-2"><DumbbellIcon size={15} /> Yes, gym today</span>
               </button>
               <button
                 onClick={() => setGymDay(false)}
                 className={`flex-1 py-2.5 rounded-xl border text-sm font-medium transition-all ${!gymDay ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 't-border text-gray-400 hover:t-border'}`}
               >
-                🛋️ Rest day
+                <span className="inline-flex items-center justify-center gap-2"><LeafIcon size={15} /> Rest day</span>
               </button>
             </div>
           </div>

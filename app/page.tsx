@@ -9,6 +9,9 @@ import SwapModal from '@/components/SwapModal'
 import BreakfastOverride from '@/components/BreakfastOverride'
 import QuickAdd from '@/components/QuickAdd'
 import ThemeCelebration from '@/components/ThemeCelebration'
+import BottomNav from '@/components/BottomNav'
+import { CalendarIcon, ClipboardIcon, DumbbellIcon, LeafIcon, PlusIcon } from '@/components/Icons'
+import DayTypeIcon from '@/components/DayTypeIcon'
 import { useTheme } from '@/lib/theme'
 import Link from 'next/link'
 
@@ -317,17 +320,22 @@ export default function Home() {
       {log ? (
         <div className="mx-4 mb-4 rounded-2xl p-4 flex items-center justify-between day-banner">
           <div className="flex items-center gap-3">
-            <span className="text-2xl">{dayLabel?.emoji}</span>
+            <span className="t-accent"><DayTypeIcon dayType={log.day_type} size={22} /></span>
             <div>
               <p className="font-semibold text-sm">{dayLabel?.label}</p>
-              <p className="t-muted text-xs">{log.gym_day ? '🏋️ Gym day' : '🛋️ Rest day'}</p>
+              <p className="t-muted text-xs flex items-center gap-1">
+                {log.gym_day ? <DumbbellIcon size={13} /> : <LeafIcon size={13} />}
+                {log.gym_day ? 'Gym day' : 'Rest day'}
+              </p>
             </div>
           </div>
           <button onClick={() => setShowDaySelector(true)} className="text-xs btn-confirm rounded-lg px-3 py-1.5">Change</button>
         </div>
       ) : (
         <div className="mx-4 mb-4">
-          <button onClick={() => setShowDaySelector(true)} className="w-full font-bold rounded-2xl p-4 text-sm btn-confirm">📅 Set Today&apos;s Plan</button>
+          <button onClick={() => setShowDaySelector(true)} className="w-full font-bold rounded-2xl p-4 text-sm btn-confirm flex items-center justify-center gap-2">
+            <CalendarIcon size={17} /> Set Today&apos;s Plan
+          </button>
         </div>
       )}
 
@@ -335,7 +343,9 @@ export default function Home() {
         <div className="mx-4 mb-4 t-card2 border t-border rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs t-muted uppercase tracking-wider">Today&apos;s Progress</p>
-            <button onClick={() => setShowQuickAdd(true)} className="text-xs btn-confirm rounded-lg px-2.5 py-1">➕ Quick Add</button>
+            <button onClick={() => setShowQuickAdd(true)} className="text-xs btn-confirm rounded-lg px-2.5 py-1 flex items-center gap-1.5">
+              <PlusIcon size={13} /> Quick Add
+            </button>
           </div>
           <div className="grid grid-cols-5 gap-1">
             <ProgressRing label="Cal" value={consumed.cal} target={TARGETS.cal} unit="" color="var(--macro-cal)" />
@@ -382,7 +392,7 @@ export default function Home() {
 
       {log?.gym_day && (
         <div className="mx-4 mb-4 rounded-xl p-3" style={{ background: "var(--accent-dim)", border: "1px solid var(--accent-border)" }}>
-          <p className="text-xs font-semibold t-accent">🏋️ GYM DAY PROTOCOL</p>
+          <p className="text-xs font-semibold t-accent flex items-center gap-1.5"><DumbbellIcon size={14} /> GYM DAY PROTOCOL</p>
           <p className="text-xs mt-1 t-muted">Salt + water 30 min before → Vita Coco after → Fairlife at home</p>
         </div>
       )}
@@ -459,25 +469,12 @@ export default function Home() {
 
       {!log && !loading && (
         <div className="mx-4 mt-8 text-center">
-          <p className="text-5xl mb-4">📋</p>
+          <ClipboardIcon size={48} className="mx-auto mb-4 t-muted" />
           <p className="t-muted text-sm">Set today&apos;s plan to see your meal suggestions</p>
         </div>
       )}
 
-      <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bottom-nav border-t t-border flex">
-        <button className="flex-1 py-4 t-accent flex flex-col items-center gap-1">
-          <span className="text-lg">📋</span><span className="text-[11px] font-semibold">Today</span>
-        </button>
-        <Link href="/history" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
-          <span className="text-lg">📅</span><span className="text-[11px]">History</span>
-        </Link>
-        <Link href="/monitor" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
-          <span className="text-lg">📈</span><span className="text-[11px]">Analysis</span>
-        </Link>
-        <Link href="/settings" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
-          <span className="text-lg">⚙️</span><span className="text-[11px]">Settings</span>
-        </Link>
-      </nav>
+      <BottomNav active="today" />
 
       {showDaySelector && <DaySelector onSelect={createLog} onClose={() => setShowDaySelector(false)} saving={saving} />}
       {showSwap && <SwapModal mealType={showSwap} options={swapOptions} onSelect={(id) => applySwap(showSwap, id)} onClose={() => setShowSwap(null)} />}
