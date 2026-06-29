@@ -128,6 +128,9 @@ export default function HistoryPage() {
                     style={!date ? { opacity: 0, pointerEvents: 'none' } : undefined}
                   >
                     <span>{date ? dateFromKey(date).getDate() : ''}</span>
+                    {selected && (
+                      <span className="absolute top-1 right-1 text-[9px] leading-none font-bold">✓</span>
+                    )}
                     {log && (
                       <span className="absolute bottom-1 left-1/2 -translate-x-1/2 text-[9px] leading-none">
                         {dayInfo?.emoji || '•'}

@@ -93,8 +93,9 @@ export default function MealsPage() {
                 <button
                   key={option.value}
                   onClick={() => setDayType(option.value)}
-                  className={`rounded-xl p-3 text-left transition-all ${active ? 'btn-primary' : 'btn-secondary'}`}
+                  className={`rounded-xl p-3 text-left transition-all relative ${active ? 'btn-primary' : 'btn-secondary'}`}
                 >
+                  {active && <span className="absolute top-2 right-2 text-xs font-bold">✓</span>}
                   <p className="text-sm font-semibold">{option.emoji} {option.label}</p>
                   <p className="text-[11px] opacity-80 mt-1">{option.description}</p>
                 </button>
@@ -116,7 +117,7 @@ export default function MealsPage() {
                   onClick={() => setMode(value)}
                   className={`px-3 py-1.5 rounded-lg text-xs font-semibold capitalize ${mode === value ? 'btn-primary' : 't-muted'}`}
                 >
-                  {value}
+                  {mode === value ? '✓ ' : ''}{value}
                 </button>
               ))}
             </div>

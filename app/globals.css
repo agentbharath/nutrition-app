@@ -60,6 +60,17 @@ html { scroll-behavior: smooth; }
 .btn-confirm:hover { opacity: 0.85; }
 .btn-confirm:active { transform: scale(0.98); }
 
+/* ── Primary / selected button ── */
+.btn-primary {
+  background: var(--accent);
+  border: 2px solid var(--accent);
+  color: var(--bg);
+  box-shadow: 0 0 0 3px var(--accent-dim);
+  transition: all 0.15s;
+}
+.btn-primary:hover { opacity: 0.92; }
+.btn-primary:active { transform: scale(0.98); }
+
 /* ── Secondary / ghost button ── */
 .btn-secondary {
   background: transparent;
