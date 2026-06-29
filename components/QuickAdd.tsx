@@ -1,6 +1,6 @@
 'use client'
-import { useState } from 'react'
-import { IngredientNutrition, searchIngredients } from '@/lib/ingredient-nutrition'
+import { useState, useEffect, useRef } from 'react'
+import { IngredientNutrition, searchIngredients, searchUSDAIngredients } from '@/lib/ingredient-nutrition'
 import { parseNutritionLabel } from '@/lib/nutrition-label'
 
 interface QuickItem {
@@ -67,7 +67,35 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
   const quickServingCount = Math.max(0, Number(quickServings) || 0)
   const recipeServingCount = Math.max(0, Number(recipeServings) || 0)
   const recipeEatenCount = Math.max(0, Number(recipeServingsEaten) || 0)
-  const recipeResults = searchIngredients(recipeQuery)
+  const [recipeResults, setRecipeResults] = useState<IngredientNutrition[]>([])
+  const [searchLoading, setSearchLoading] = useState(false)
+  const searchTimeout = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // USDA search with local fallback
+  useEffect(() => {
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    if (!recipeQuery.trim()) {
+      setRecipeResults(searchIngredients(''))
+      return
+    }
+    // Show local results immediately
+    setRecipeResults(searchIngredients(recipeQuery))
+    // Then fetch USDA after 400ms debounce
+    if (recipeQuery.trim().length >= 2) {
+      setSearchLoading(true)
+      searchTimeout.current = setTimeout(async () => {
+        const usdaResults = await searchUSDAIngredients(recipeQuery)
+        if (usdaResults.length > 0) {
+          // Merge: USDA first, then local results not already covered
+          const localResults = searchIngredients(recipeQuery)
+            .filter(l => !usdaResults.some(u => u.name.toLowerCase().includes(l.name.toLowerCase().split(',')[0])))
+          setRecipeResults([...usdaResults.slice(0, 15), ...localResults.slice(0, 5)])
+        }
+        setSearchLoading(false)
+      }, 400)
+    }
+    return () => { if (searchTimeout.current) clearTimeout(searchTimeout.current) }
+  }, [recipeQuery])
 
   function rounded(value: number) {
     return Math.round(value * 10) / 10
@@ -423,6 +451,12 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
                   className="mt-1 w-full t-card2 border t-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-emerald-500/50 t-text placeholder-gray-600"
                 />
                 <div className="mt-2 max-h-44 overflow-y-auto space-y-1.5">
+                  {searchLoading && (
+                    <div className="flex items-center gap-2 px-3 py-2">
+                      <div className="w-3 h-3 border border-t-transparent rounded-full animate-spin t-accent" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
+                      <span className="text-xs t-muted">Searching USDA database...</span>
+                    </div>
+                  )}
                   {recipeResults.map((ingredient) => (
                     <button
                       key={ingredient.id}
@@ -431,7 +465,11 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
                     >
                       <span>
                         <span className="text-sm font-medium t-text">{ingredient.name}</span>
-                        <span className="block text-xs t-muted">{ingredient.cuisine} • per 100g</span>
+                        <span className="block text-xs t-muted">
+                          {ingredient.cuisine === 'Branded' ? '🏷️ Branded' :
+                           ingredient.cuisine === 'USDA' ? '🇺🇸 USDA' :
+                           ingredient.cuisine} • per 100g
+                        </span>
                       </span>
                       <span className="text-xs t-accent shrink-0">Add</span>
                     </button>

@@ -138,3 +138,76 @@ export function searchIngredients(query: string) {
     .slice(0, 12)
     .map(({ ingredient }) => ingredient)
 }
+
+// Fetch from USDA and convert to IngredientNutrition format
+export async function searchUSDAIngredients(query: string): Promise<IngredientNutrition[]> {
+  const apiKey = process.env.NEXT_PUBLIC_USDA_API_KEY
+  if (!apiKey || query.trim().length < 2) return []
+
+  try {
+    const params = new URLSearchParams({
+      query: query.trim(),
+      api_key: apiKey,
+      pageSize: '20',
+      dataType: 'Foundation,SR Legacy,Branded',
+      sortBy: 'dataType.keyword',
+      sortOrder: 'asc',
+    })
+
+    const res = await fetch(`https://api.nal.usda.gov/fdc/v1/foods/search?${params}`)
+    if (!res.ok) return []
+    const data = await res.json()
+
+    const NUTRIENT_IDS = {
+      energy: [1008, 2047, 2048],
+      protein: [1003],
+      sodium: [1093],
+      carbs: [1005],
+      fiber: [1079],
+    }
+
+    function getNutrient(nutrients: Array<{nutrientId: number; value: number}>, ids: number[]) {
+      for (const id of ids) {
+        const found = nutrients.find((n: any) => n.nutrientId === id)
+        if (found?.value != null) return found.value
+      }
+      return 0
+    }
+
+    return (data.foods || [])
+      .map((food: any): IngredientNutrition | null => {
+        const nutrients = food.foodNutrients || []
+        const cal = getNutrient(nutrients, NUTRIENT_IDS.energy)
+        const protein = getNutrient(nutrients, NUTRIENT_IDS.protein)
+        const sodium = getNutrient(nutrients, NUTRIENT_IDS.sodium)
+        const carbs = getNutrient(nutrients, NUTRIENT_IDS.carbs)
+        const fiber = getNutrient(nutrients, NUTRIENT_IDS.fiber)
+
+        if (cal === 0 && protein === 0) return null
+
+        const servingSize = food.servingSize || 100
+        const servingUnit = (food.servingSizeUnit || 'g').toUpperCase()
+        const multiplier = servingUnit === 'G' && servingSize !== 100 ? 100 / servingSize : 1
+
+        const brand = food.brandOwner || food.brandName
+        const rawName = food.description || ''
+        const name = rawName.charAt(0).toUpperCase() + rawName.slice(1).toLowerCase()
+        const displayName = brand ? `${name} — ${brand}` : name
+
+        return {
+          id: `usda-${food.fdcId}`,
+          name: displayName,
+          aliases: [],
+          cuisine: food.dataType === 'Branded' ? 'Branded' : 'USDA',
+          cal: Math.round(cal * multiplier),
+          protein: Math.round(protein * multiplier * 10) / 10,
+          sodium: Math.round(sodium * multiplier),
+          carbs: Math.round(carbs * multiplier * 10) / 10,
+          fiber: Math.round(fiber * multiplier * 10) / 10,
+        }
+      })
+      .filter(Boolean) as IngredientNutrition[]
+  } catch {
+    return []
+  }
+}
