@@ -61,10 +61,9 @@ export default function MonitorPage() {
     ? aiReports.find((report) => report.report_type === 'daily' && report.period_end === selectedLog.date)
     : null
   const latestWeeklyAi = aiReports.find((report) => report.report_type === 'weekly')
-  const latestHealth = selectedLog
-    ? healthMetrics.find((item) => item.date === selectedLog.date) || healthMetrics[0]
-    : healthMetrics[0]
   const weekAnalyses = logs.slice(0, 7).map((log) => analyzeFoodDay(log, quickAdds.filter((item) => item.date === log.date)))
+  const weekHealth = healthMetrics.slice(0, 7)
+  const weekHealthSummary = summarizeHealthAndFoodWeek(weekHealth, weekAnalyses)
   const repeatedWatches = weekAnalyses.flatMap((analysis) => analysis.watch)
   const sodiumWatchCount = repeatedWatches.filter((item) => item.toLowerCase().includes('sodium')).length
   const proteinWatchCount = repeatedWatches.filter((item) => item.toLowerCase().includes('protein')).length
@@ -129,21 +128,21 @@ export default function MonitorPage() {
             </div>
           </section>
 
-          {latestHealth && (
+          {weekHealth.length > 0 && (
             <section className="t-card rounded-2xl p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs t-muted uppercase tracking-wider">Health context</p>
-                  <h2 className="text-lg font-bold t-text mt-1">{formatMonitorDate(latestHealth.date)}</h2>
+                  <p className="text-xs t-muted uppercase tracking-wider">7-day nutrition + activity</p>
+                  <h2 className="text-lg font-bold t-text mt-1">{weekHealthSummary.days} synced health days</h2>
                 </div>
                 <p className="text-xs t-muted text-right">Google Health</p>
               </div>
               <div className="grid grid-cols-4 gap-1.5 mt-4">
                 {[
-                  ['Steps', latestHealth.steps ? latestHealth.steps.toLocaleString() : '-'],
-                  ['Burn', latestHealth.calories_out ? Math.round(latestHealth.calories_out) : '-'],
-                  ['Move', latestHealth.activity_calories ? Math.round(latestHealth.activity_calories) : '-'],
-                  ['Active', latestHealth.active_minutes ? `${Math.round(latestHealth.active_minutes)}m` : '-'],
+                  ['Intake', weekHealthSummary.avgIntake ? `${weekHealthSummary.avgIntake}` : '-'],
+                  ['Burn', weekHealthSummary.avgBurn ? `${weekHealthSummary.avgBurn}` : '-'],
+                  ['Move', weekHealthSummary.avgMove ? `${weekHealthSummary.avgMove}` : '-'],
+                  ['Steps', weekHealthSummary.avgSteps ? weekHealthSummary.avgSteps.toLocaleString() : '-'],
                 ].map(([label, value]) => (
                   <div key={label} className="macro-pill rounded-xl p-2 text-center">
                     <p className="text-xs font-bold t-text">{value}</p>
@@ -152,7 +151,11 @@ export default function MonitorPage() {
                 ))}
               </div>
               <p className="text-xs t-muted mt-3">
-                Claude uses this for activity context. Food calories stay separate from calories burned.
+                Intake is food calories. Burn is total daily energy burned, including resting/sleeping baseline. Move is active calories from movement.
+              </p>
+              <p className="text-xs t-muted mt-1">
+                Avg active time: {weekHealthSummary.avgActive ? `${weekHealthSummary.avgActive}m/day` : '-'}
+                {weekHealthSummary.avgSleep ? ` • Avg sleep: ${weekHealthSummary.avgSleep}h` : ''}
               </p>
             </section>
           )}
@@ -291,4 +294,22 @@ export default function MonitorPage() {
       <BottomNav active="analysis" />
     </main>
   )
+}
+
+function summarizeHealthAndFoodWeek(health: HealthDailyMetrics[], analyses: ReturnType<typeof analyzeFoodDay>[]) {
+  const avg = (values: Array<number | null | undefined>) => {
+    const valid = values.filter((value): value is number => typeof value === 'number')
+    if (valid.length === 0) return null
+    return Math.round(valid.reduce((sum, value) => sum + value, 0) / valid.length)
+  }
+  const avgSleepMinutes = avg(health.map((item) => item.sleep_minutes))
+  return {
+    days: health.length,
+    avgIntake: avg(analyses.map((analysis) => analysis.totals.cal)),
+    avgBurn: avg(health.map((item) => item.calories_out)),
+    avgMove: avg(health.map((item) => item.activity_calories)),
+    avgSteps: avg(health.map((item) => item.steps)),
+    avgActive: avg(health.map((item) => item.active_minutes)),
+    avgSleep: avgSleepMinutes ? Math.round((avgSleepMinutes / 60) * 10) / 10 : null,
+  }
 }
