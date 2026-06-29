@@ -151,6 +151,16 @@ export default function SettingsPage() {
 
   const latestHealth = healthStatus?.latest?.[0]
   const healthNeedsReconnect = hasHealthScopeError(latestHealth)
+  const hasAnyHealthValue = Boolean(latestHealth && [
+    latestHealth.steps,
+    latestHealth.calories_out,
+    latestHealth.activity_calories,
+    latestHealth.active_minutes,
+    latestHealth.active_zone_minutes,
+    latestHealth.resting_heart_rate,
+    latestHealth.sleep_minutes,
+    latestHealth.weight_kg,
+  ].some((value) => value !== null && value !== undefined))
 
   return (
     <main className="max-w-md mx-auto min-h-screen pb-24 t-bg">
@@ -254,9 +264,9 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-4 gap-1.5">
                   {[
                     ['Steps', latestHealth.steps ? latestHealth.steps.toLocaleString() : '-'],
-                    ['Sleep', latestHealth.sleep_minutes ? `${Math.round(latestHealth.sleep_minutes / 60 * 10) / 10}h` : '-'],
-                    ['RHR', latestHealth.resting_heart_rate ? `${latestHealth.resting_heart_rate}` : '-'],
-                    ['Weight', latestHealth.weight_kg ? `${latestHealth.weight_kg}kg` : '-'],
+                    ['Burn', latestHealth.calories_out ? `${Math.round(latestHealth.calories_out)}` : '-'],
+                    ['Move', latestHealth.activity_calories ? `${Math.round(latestHealth.activity_calories)}` : '-'],
+                    ['Active', latestHealth.active_minutes ? `${Math.round(latestHealth.active_minutes)}m` : '-'],
                   ].map(([label, value]) => (
                     <div key={label} className="macro-pill rounded-xl p-2 text-center">
                       <p className="text-xs font-bold t-text">{value}</p>
@@ -264,6 +274,18 @@ export default function SettingsPage() {
                     </div>
                   ))}
                 </div>
+              )}
+              {latestHealth && hasAnyHealthValue && (
+                <p className="text-[11px] t-muted">
+                  {[
+                    latestHealth.lightly_active_minutes ? `${latestHealth.lightly_active_minutes}m light` : null,
+                    latestHealth.fairly_active_minutes ? `${latestHealth.fairly_active_minutes}m moderate` : null,
+                    latestHealth.very_active_minutes ? `${latestHealth.very_active_minutes}m vigorous` : null,
+                  ].filter(Boolean).join(' • ') || 'Activity details synced.'}
+                </p>
+              )}
+              {latestHealth && !healthNeedsReconnect && !hasAnyHealthValue && (
+                <p className="text-[11px] t-muted">Connected, but Google Health did not return activity/body values for the latest synced days.</p>
               )}
               <p className="text-[11px] t-muted">
                 {healthStatus.last_sync_at

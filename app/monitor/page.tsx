@@ -141,9 +141,9 @@ export default function MonitorPage() {
               <div className="grid grid-cols-4 gap-1.5 mt-4">
                 {[
                   ['Steps', latestHealth.steps ? latestHealth.steps.toLocaleString() : '-'],
-                  ['Sleep', latestHealth.sleep_minutes ? `${Math.round(latestHealth.sleep_minutes / 60 * 10) / 10}h` : '-'],
-                  ['AZM', latestHealth.active_zone_minutes ?? '-'],
-                  ['RHR', latestHealth.resting_heart_rate ?? '-'],
+                  ['Burn', latestHealth.calories_out ? Math.round(latestHealth.calories_out) : '-'],
+                  ['Move', latestHealth.activity_calories ? Math.round(latestHealth.activity_calories) : '-'],
+                  ['Active', latestHealth.active_minutes ? `${Math.round(latestHealth.active_minutes)}m` : '-'],
                 ].map(([label, value]) => (
                   <div key={label} className="macro-pill rounded-xl p-2 text-center">
                     <p className="text-xs font-bold t-text">{value}</p>
@@ -152,7 +152,7 @@ export default function MonitorPage() {
                 ))}
               </div>
               <p className="text-xs t-muted mt-3">
-                Claude uses this for activity, sleep, and recovery context. Food calories stay separate from calories burned.
+                Claude uses this for activity context. Food calories stay separate from calories burned.
               </p>
             </section>
           )}

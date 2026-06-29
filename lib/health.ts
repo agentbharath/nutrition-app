@@ -270,6 +270,7 @@ export async function syncGoogleHealthDate(date: string, supabase = createServic
 
   const values = Object.fromEntries(entries.map(([key, value]) => [key, value])) as Record<string, number | null>
   const raw = Object.fromEntries(entries.map(([key, , rollup]) => [key, rollup]))
+  const activeByLevel = extractActiveMinutesByLevel(raw.active_minutes)
 
   const metrics: HealthDailyMetrics = {
     provider: PROVIDER,
@@ -277,6 +278,9 @@ export async function syncGoogleHealthDate(date: string, supabase = createServic
     steps: roundOrNull(values.steps),
     calories_out: roundOrNull(values.total_calories),
     activity_calories: roundOrNull(values.active_energy),
+    lightly_active_minutes: roundOrNull(activeByLevel.light),
+    fairly_active_minutes: roundOrNull(activeByLevel.moderate),
+    very_active_minutes: roundOrNull(activeByLevel.vigorous),
     active_minutes: roundOrNull(values.active_minutes),
     active_zone_minutes: roundOrNull(values.active_zone_minutes),
     resting_heart_rate: roundOrNull(values.resting_heart_rate),
@@ -345,7 +349,11 @@ export function compactHealthMetrics(metrics?: HealthDailyMetrics | null) {
     date: metrics.date,
     steps: metrics.steps,
     calories_out: metrics.calories_out,
+    activity_calories: metrics.activity_calories,
     active_minutes: metrics.active_minutes,
+    lightly_active_minutes: metrics.lightly_active_minutes,
+    fairly_active_minutes: metrics.fairly_active_minutes,
+    very_active_minutes: metrics.very_active_minutes,
     active_zone_minutes: metrics.active_zone_minutes,
     resting_heart_rate: metrics.resting_heart_rate,
     sleep_minutes: metrics.sleep_minutes,
@@ -430,6 +438,26 @@ function extractRollupValue(rollup: unknown, spec: RollupSpec) {
     }
   }
   return null
+}
+
+function extractActiveMinutesByLevel(rollup: unknown) {
+  const result = { light: null as number | null, moderate: null as number | null, vigorous: null as number | null }
+  const points = Array.isArray(asRecord(rollup).rollupDataPoints) ? asRecord(rollup).rollupDataPoints as unknown[] : []
+  for (const point of points) {
+    const activeMinutes = asRecord(asRecord(point).activeMinutes)
+    const rows = activeMinutes.activeMinutesRollupByActivityLevel
+    if (!Array.isArray(rows)) continue
+    rows.forEach((row) => {
+      const record = asRecord(row)
+      const level = String(record.activityLevel || '').toLowerCase()
+      const minutes = numberOrNull(record.activeMinutesSum)
+      if (minutes === null) return
+      if (level === 'light') result.light = (result.light || 0) + minutes
+      if (level === 'moderate') result.moderate = (result.moderate || 0) + minutes
+      if (level === 'vigorous') result.vigorous = (result.vigorous || 0) + minutes
+    })
+  }
+  return result
 }
 
 function numberOrNull(value: unknown) {
