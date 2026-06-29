@@ -20,12 +20,33 @@ function macroLine(meal: Meal) {
   return `${Math.round(meal.totals.cal)} cal • ${Math.round(meal.totals.protein * 10) / 10}g P • ${Math.round(meal.totals.sodium)}mg Na • ${Math.round(meal.totals.fiber * 10) / 10}g F • ${Math.round(meal.totals.carbs * 10) / 10}g C`
 }
 
-function MealBlock({ meal, label }: { meal: Meal; label?: string }) {
+function getCurrentMealSlot(slots: Array<{ key: MealSlot; label: string; meal: Meal }>, hour: number) {
+  const has = (key: MealSlot) => slots.some((slot) => slot.key === key)
+
+  if (hour < 11) return 'breakfast'
+  if (hour < 15) return 'lunch'
+  if (hour < 18) {
+    if (has('shake')) return 'shake'
+    if (has('vitaCoco')) return 'vitaCoco'
+    return has('lunch') ? 'lunch' : 'dinner'
+  }
+  if (hour < 21) return 'dinner'
+  return has('snack') ? 'snack' : 'dinner'
+}
+
+function MealBlock({ meal, label, current }: { meal: Meal; label?: string; current?: boolean }) {
   return (
-    <details className="t-card rounded-2xl p-4 group">
+    <details className={`t-card rounded-2xl p-4 group ${current ? 'state-now' : ''}`}>
       <summary className="list-none cursor-pointer flex items-start justify-between gap-3">
         <div>
-          {label && <p className="text-[11px] uppercase tracking-wider t-muted mb-1">{label}</p>}
+          <div className="flex items-center gap-2 mb-1">
+            {label && <p className="text-[11px] uppercase tracking-wider t-muted">{label}</p>}
+            {current && (
+              <span className="rounded-full px-2 py-0.5 text-[9px] font-bold leading-none" style={{ background: 'var(--amber)', color: 'var(--bg)' }}>
+                NOW
+              </span>
+            )}
+          </div>
           <p className="font-semibold text-sm t-text">{meal.name}</p>
           <p className="text-xs t-muted mt-1">{macroLine(meal)}</p>
         </div>
@@ -56,6 +77,7 @@ function MealBlock({ meal, label }: { meal: Meal; label?: string }) {
 export default function MealsPage() {
   const [dayType, setDayType] = useState<DayType>('wfh_regular')
   const [mode, setMode] = useState<Mode>('rest')
+  const [currentHour] = useState(() => new Date().getHours())
   const gymDay = mode === 'gym'
 
   const selectedOption = DAY_TYPE_OPTIONS.find((option) => option.value === dayType) || DAY_TYPE_OPTIONS[0]
@@ -66,6 +88,7 @@ export default function MealsPage() {
       .map((slot) => ({ ...slot, meal: meals[slot.key] }))
       .filter((slot): slot is { key: MealSlot; label: string; meal: Meal } => Boolean(slot.meal))
   ), [meals])
+  const currentMealKey = useMemo(() => getCurrentMealSlot(visibleMeals, currentHour), [visibleMeals, currentHour])
 
   const swapMeals = useMemo(() => {
     const unique = new Map<string, Meal>()
@@ -140,7 +163,7 @@ export default function MealsPage() {
 
         <section className="space-y-2">
           {visibleMeals.map(({ key, label, meal }) => (
-            <MealBlock key={`${key}-${meal.id}`} meal={meal} label={label} />
+            <MealBlock key={`${key}-${meal.id}`} meal={meal} label={label} current={key === currentMealKey} />
           ))}
         </section>
 

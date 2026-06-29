@@ -71,6 +71,32 @@ html { scroll-behavior: smooth; }
 .btn-primary:hover { opacity: 0.92; }
 .btn-primary:active { transform: scale(0.98); }
 
+/* ── Current / today state ── */
+.state-today {
+  background: rgba(245, 158, 11, 0.16);
+  border: 2px solid var(--amber);
+  color: var(--text);
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18);
+}
+.state-today-selected {
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.35), 0 0 0 6px var(--accent-dim);
+}
+.state-now {
+  border: 2px solid var(--amber) !important;
+  box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.18), var(--card-shadow);
+  position: relative;
+}
+.state-now::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 14px;
+  bottom: 14px;
+  width: 4px;
+  border-radius: 999px;
+  background: var(--amber);
+}
+
 /* ── Secondary / ghost button ── */
 .btn-secondary {
   background: transparent;

@@ -71,6 +71,7 @@ export default function HistoryPage() {
   const selectedAnalysis = selectedLog ? analyzeFoodDay(selectedLog, selectedQuickAdds) : null
   const monthCells = getMonthDays(visibleMonth)
   const trackedInMonth = logs.filter((log) => log.date.startsWith(monthKey(visibleMonth))).length
+  const todayKey = toDateKey(new Date())
 
   function shiftMonth(delta: number) {
     setVisibleMonth((current) => new Date(current.getFullYear(), current.getMonth() + delta, 1))
@@ -118,16 +119,26 @@ export default function HistoryPage() {
               {monthCells.map((date, index) => {
                 const log = date ? logsByDate.get(date) : null
                 const selected = date === selectedDate
+                const today = date === todayKey
                 const dayInfo = log ? getDayLabel(log.day_type as DayType) : null
                 return (
                   <button
                     key={date || `empty-${index}`}
                     disabled={!date}
                     onClick={() => date && setSelectedDate(date)}
-                    className={`aspect-square rounded-xl text-xs font-semibold transition-all relative ${selected ? 'btn-primary' : log ? 'btn-secondary' : 't-muted'}`}
+                    className={[
+                      'aspect-square rounded-xl text-xs font-semibold transition-all relative',
+                      selected ? 'btn-primary' : today ? 'state-today' : log ? 'btn-secondary' : 't-muted',
+                      selected && today ? 'state-today-selected' : '',
+                    ].join(' ')}
                     style={!date ? { opacity: 0, pointerEvents: 'none' } : undefined}
                   >
                     <span>{date ? dateFromKey(date).getDate() : ''}</span>
+                    {today && (
+                      <span className="absolute -top-2 left-1/2 -translate-x-1/2 rounded-full px-1.5 py-0.5 text-[8px] font-bold leading-none" style={{ background: 'var(--amber)', color: 'var(--bg)' }}>
+                        TODAY
+                      </span>
+                    )}
                     {selected && (
                       <span className="absolute top-1 right-1 text-[9px] leading-none font-bold">✓</span>
                     )}
