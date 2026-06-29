@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
 import { createClient } from '@supabase/supabase-js'
-import { buildDailySummary, buildWeeklySummary, getPacificDate, toMonitorDay } from '@/lib/nutrition-monitor'
+import { QuickAddEntry, analyzeFoodDay, buildDailyFoodSummary, buildWeeklySummary, getPacificDate, toMonitorDay } from '@/lib/nutrition-monitor'
 import { DailyLog } from '@/lib/supabase'
 
 const supabase = createClient(
@@ -33,7 +33,14 @@ async function buildAnalysisMessage(type: string) {
       }
     }
 
-    return { ...buildDailySummary(toMonitorDay(log)), url: '/monitor', analyzedDays: 1 }
+    const { data: quickAdds } = await supabase
+      .from('quick_adds')
+      .select('*')
+      .eq('date', date)
+      .returns<QuickAddEntry[]>()
+    const analysis = analyzeFoodDay(log, quickAdds || [])
+
+    return { ...buildDailyFoodSummary(analysis), url: '/monitor', analyzedDays: 1 }
   }
 
   if (type === 'weekly-analysis') {

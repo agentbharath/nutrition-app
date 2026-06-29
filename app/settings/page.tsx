@@ -261,7 +261,7 @@ export default function SettingsPage() {
           <span className="text-lg">📅</span><span className="text-[11px]">History</span>
         </Link>
         <Link href="/monitor" className="flex-1 py-4 flex flex-col items-center gap-1 t-muted hover:opacity-80 transition-opacity">
-          <span className="text-lg">📈</span><span className="text-[11px]">Monitor</span>
+          <span className="text-lg">📈</span><span className="text-[11px]">Analysis</span>
         </Link>
         <button className="flex-1 py-4 flex flex-col items-center gap-1 t-accent">
           <span className="text-lg">⚙️</span><span className="text-[11px] font-semibold">Settings</span>

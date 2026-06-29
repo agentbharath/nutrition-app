@@ -161,7 +161,7 @@ export default function MealsPage() {
           <span className="text-lg">📅</span><span className="text-[11px]">History</span>
         </Link>
         <Link href="/monitor" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
-          <span className="text-lg">📈</span><span className="text-[11px]">Monitor</span>
+          <span className="text-lg">📈</span><span className="text-[11px]">Analysis</span>
         </Link>
         <Link href="/settings" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
           <span className="text-lg">⚙️</span><span className="text-[11px]">Settings</span>

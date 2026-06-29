@@ -2,44 +2,49 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { supabase, DailyLog } from '@/lib/supabase'
-import { MONITOR_METRICS, average, formatMonitorDate, hitRate, riskIssues, toMonitorDay, weeklyScore } from '@/lib/nutrition-monitor'
-
-function trend(now: number, previous: number) {
-  if (!previous) return { label: 'new', tone: 't-muted' }
-  const delta = ((now - previous) / previous) * 100
-  const sign = delta > 0 ? '+' : ''
-  return {
-    label: `${sign}${Math.round(delta)}%`,
-    tone: Math.abs(delta) < 5 ? 't-muted' : delta > 0 ? 't-accent' : 'text-amber-500',
-  }
-}
+import { analyzeFoodDay, formatMonitorDate, QuickAddEntry, toMonitorDay, weeklyScore } from '@/lib/nutrition-monitor'
 
 export default function MonitorPage() {
   const [logs, setLogs] = useState<DailyLog[]>([])
+  const [quickAdds, setQuickAdds] = useState<QuickAddEntry[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    supabase.from('daily_logs').select('*').order('date', { ascending: false }).limit(90)
-      .then(({ data }) => { setLogs(data || []); setLoading(false) })
+    async function load() {
+      const { data: logData } = await supabase.from('daily_logs').select('*').order('date', { ascending: false }).limit(90)
+      const dates = (logData || []).map((log) => log.date)
+      const { data: quickAddData } = dates.length
+        ? await supabase.from('quick_adds').select('*').in('date', dates)
+        : { data: [] }
+      setLogs(logData || [])
+      setQuickAdds((quickAddData || []) as QuickAddEntry[])
+      setLoading(false)
+    }
+    load()
   }, [])
 
   const days = useMemo(() => logs.map(toMonitorDay), [logs])
   const last7 = days.slice(0, 7)
-  const previous7 = days.slice(7, 14)
-  const chartDays = [...last7].reverse()
-  const riskDays = last7.filter((day) => riskIssues(day).length > 0)
-
   const score = last7.length
     ? weeklyScore(last7)
     : 0
+  const selectedLog = logs[0]
+  const latestAnalysis = selectedLog
+    ? analyzeFoodDay(selectedLog, quickAdds.filter((item) => item.date === selectedLog.date))
+    : null
+  const weekAnalyses = logs.slice(0, 7).map((log) => analyzeFoodDay(log, quickAdds.filter((item) => item.date === log.date)))
+  const repeatedWatches = weekAnalyses.flatMap((analysis) => analysis.watch)
+  const sodiumWatchCount = repeatedWatches.filter((item) => item.toLowerCase().includes('sodium')).length
+  const proteinWatchCount = repeatedWatches.filter((item) => item.toLowerCase().includes('protein')).length
+  const fiberWatchCount = repeatedWatches.filter((item) => item.toLowerCase().includes('fiber')).length
 
   return (
     <main className="max-w-md mx-auto min-h-screen pb-24 t-bg">
       <div className="app-header px-4 pt-10 pb-5 flex items-center gap-3">
         <Link href="/" className="text-xl btn-secondary w-8 h-8 flex items-center justify-center rounded-full">←</Link>
         <div>
-          <h1 className="text-xl font-bold t-text">Nutrition Monitor</h1>
-          <p className="text-xs t-muted">Daily and weekly nutrition signals</p>
+          <h1 className="text-xl font-bold t-text">Food Analysis</h1>
+          <p className="text-xs t-muted">What you ate and what to adjust</p>
         </div>
       </div>
 
@@ -52,99 +57,122 @@ export default function MonitorPage() {
           <p className="text-4xl mb-3">📈</p>
           <p className="t-muted text-sm">No logs yet. Track a few days and this page will light up.</p>
         </div>
-      ) : (
+      ) : latestAnalysis ? (
         <div className="px-4 space-y-3">
           <section className="t-card rounded-2xl p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs t-muted uppercase tracking-wider">Weekly score</p>
-                <p className="text-3xl font-bold t-text mt-1">{score}%</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xs t-muted">Last {last7.length} logged days</p>
-                <p className="text-sm font-semibold t-accent">{riskDays.length === 0 ? 'On track' : `${riskDays.length} watch days`}</p>
-              </div>
-            </div>
-          </section>
-
-          <section className="grid grid-cols-2 gap-2">
-            {MONITOR_METRICS.map((metric) => {
-              const avg = average(last7, metric.key)
-              const previousAvg = average(previous7, metric.key)
-              const t = trend(avg, previousAvg)
-              const pct = metric.invert ? Math.min(100, (metric.target / Math.max(avg, 1)) * 100) : Math.min(100, (avg / metric.target) * 100)
-              return (
-                <div key={metric.key} className="t-card rounded-2xl p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <p className="text-xs t-muted uppercase tracking-wider">{metric.label}</p>
-                      <p className="text-xl font-bold t-text mt-1">{Math.round(avg)}<span className="text-xs t-muted ml-1">{metric.unit}</span></p>
-                    </div>
-                    <span className={`text-xs font-semibold ${t.tone}`}>{t.label}</span>
-                  </div>
-                  <div className="mt-3 h-2 rounded-full overflow-hidden macro-pill">
-                    <div className="h-full rounded-full" style={{ width: `${pct}%`, background: metric.color }} />
-                  </div>
-                  <div className="flex justify-between mt-1 text-[11px] t-muted">
-                    <span>{hitRate(last7, metric.key, metric.invert)}% hit</span>
-                    <span>{metric.invert ? '<=' : '>='}{metric.target}{metric.unit}</span>
-                  </div>
-                </div>
-              )
-            })}
-          </section>
-
-          <section className="t-card rounded-2xl p-4">
-            <p className="text-xs t-muted uppercase tracking-wider mb-3">7-day trend</p>
-            <div className="space-y-3">
-              {chartDays.map((day) => (
-                <div key={day.date}>
-                  <div className="flex items-center justify-between mb-1">
-                    <p className="text-xs font-medium t-text">{formatMonitorDate(day.date)}</p>
-                    <p className="text-xs t-muted">{Math.round(day.cal)} cal • {Math.round(day.protein)}g P • {Math.round(day.sodium)}mg Na</p>
-                  </div>
-                  <div className="grid grid-cols-5 gap-1">
-                    {MONITOR_METRICS.map((metric) => {
-                      const rawPct = (day[metric.key] / metric.target) * 100
-                      const pct = Math.max(3, Math.min(100, rawPct))
-                      const bad = metric.invert ? day[metric.key] > metric.target : day[metric.key] < metric.target
-                      return (
-                        <div key={metric.key} className="h-2 rounded-full overflow-hidden macro-pill">
-                          <div
-                            className="h-full rounded-full"
-                            style={{ width: `${pct}%`, background: bad ? 'var(--amber)' : metric.color }}
-                          />
-                        </div>
-                      )
-                    })}
-                  </div>
+            <p className="text-xs t-muted uppercase tracking-wider">Latest analysis</p>
+            <h2 className="text-lg font-bold t-text mt-1">{formatMonitorDate(latestAnalysis.date)}</h2>
+            <p className="text-sm t-muted mt-2">{latestAnalysis.headline}</p>
+            <div className="grid grid-cols-5 gap-1.5 mt-4">
+              {[
+                ['Cal', Math.round(latestAnalysis.totals.cal)],
+                ['P', `${Math.round(latestAnalysis.totals.protein)}g`],
+                ['Na', `${Math.round(latestAnalysis.totals.sodium)}mg`],
+                ['F', `${Math.round(latestAnalysis.totals.fiber)}g`],
+                ['C', `${Math.round(latestAnalysis.totals.carbs)}g`],
+              ].map(([label, value]) => (
+                <div key={label} className="macro-pill rounded-xl p-2 text-center">
+                  <p className="text-xs font-bold t-text">{value}</p>
+                  <p className="text-[10px] t-muted">{label}</p>
                 </div>
               ))}
             </div>
           </section>
 
           <section className="t-card rounded-2xl p-4">
-            <p className="text-xs t-muted uppercase tracking-wider mb-3">Watch list</p>
-            {riskDays.length === 0 ? (
-              <p className="text-sm t-accent font-semibold">No major issues in the last week.</p>
+            <p className="text-xs t-muted uppercase tracking-wider mb-3">What was eaten</p>
+            {latestAnalysis.eaten.length === 0 ? (
+              <p className="text-sm t-muted">No eaten meals were confirmed for this day.</p>
             ) : (
               <div className="space-y-2">
-                {riskDays.map((day) => {
-                  const issues = riskIssues(day)
-                  return (
-                    <div key={day.date} className="flex items-center justify-between gap-3 border-b t-border pb-2 last:border-b-0 last:pb-0">
+                {latestAnalysis.eaten.map((entry, index) => (
+                  <div key={`${entry.slot}-${entry.name}-${index}`} className="rounded-xl p-3 macro-pill">
+                    <div className="flex items-start justify-between gap-3">
                       <div>
-                        <p className="text-sm font-semibold t-text">{formatMonitorDate(day.date)}</p>
-                        <p className="text-xs t-muted">{issues.join(' • ')}</p>
+                        <p className="text-[11px] uppercase tracking-wider t-muted">{entry.slot}</p>
+                        <p className="text-sm font-semibold t-text">{entry.name}</p>
                       </div>
-                      <Link href="/history" className="text-xs btn-secondary rounded-lg px-2 py-1">Review</Link>
+                      <p className="text-xs font-semibold t-accent shrink-0">{Math.round(entry.cal)} cal</p>
                     </div>
-                  )
-                })}
+                    <p className="text-[11px] t-muted mt-2">
+                      {Math.round(entry.protein * 10) / 10}g P • {Math.round(entry.sodium)}mg Na • {Math.round(entry.fiber * 10) / 10}g fiber • {Math.round(entry.carbs * 10) / 10}g carbs
+                    </p>
+                  </div>
+                ))}
               </div>
             )}
           </section>
+
+          <section className="grid grid-cols-1 gap-3">
+            <div className="t-card rounded-2xl p-4">
+              <p className="text-xs t-muted uppercase tracking-wider mb-3">Good signals</p>
+              {latestAnalysis.positives.length === 0 ? (
+                <p className="text-sm t-muted">No strong positives yet. Add or confirm more food to analyze.</p>
+              ) : (
+                <div className="space-y-2">
+                  {latestAnalysis.positives.map((item) => (
+                    <p key={item} className="text-sm t-text">✓ {item}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="t-card rounded-2xl p-4">
+              <p className="text-xs t-muted uppercase tracking-wider mb-3">Watch</p>
+              {latestAnalysis.watch.length === 0 ? (
+                <p className="text-sm t-accent font-semibold">No major issues from what was eaten.</p>
+              ) : (
+                <div className="space-y-2">
+                  {latestAnalysis.watch.map((item) => (
+                    <p key={item} className="text-sm t-text">• {item}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="t-card rounded-2xl p-4">
+              <p className="text-xs t-muted uppercase tracking-wider mb-3">Next move</p>
+              {latestAnalysis.suggestions.length === 0 ? (
+                <p className="text-sm t-muted">Keep the same pattern unless hunger or training changes.</p>
+              ) : (
+                <div className="space-y-2">
+                  {latestAnalysis.suggestions.map((item) => (
+                    <p key={item} className="text-sm t-text">→ {item}</p>
+                  ))}
+                </div>
+              )}
+            </div>
+          </section>
+
+          <section className="t-card rounded-2xl p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-xs t-muted uppercase tracking-wider">Weekly food pattern</p>
+                <p className="text-3xl font-bold t-text mt-1">{score}%</p>
+              </div>
+              <p className="text-xs t-muted text-right">Based on latest {weekAnalyses.length} logged days</p>
+            </div>
+            <div className="mt-4 space-y-2 text-sm">
+              <p className="t-text">Sodium watch days: <span className="font-semibold">{sodiumWatchCount}</span></p>
+              <p className="t-text">Protein short days: <span className="font-semibold">{proteinWatchCount}</span></p>
+              <p className="t-text">Fiber short days: <span className="font-semibold">{fiberWatchCount}</span></p>
+            </div>
+          </section>
+
+          <section className="t-card rounded-2xl p-4">
+            <p className="text-xs t-muted uppercase tracking-wider mb-3">Recent daily analyses</p>
+            <div className="space-y-2">
+              {weekAnalyses.map((analysis) => (
+                <div key={analysis.date} className="border-b t-border pb-2 last:border-b-0 last:pb-0">
+                  <p className="text-sm font-semibold t-text">{formatMonitorDate(analysis.date)}</p>
+                  <p className="text-xs t-muted mt-0.5">{analysis.headline}</p>
+                </div>
+              ))}
+            </div>
+          </section>
         </div>
+      ) : (
+        null
       )}
 
       <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bottom-nav flex">
@@ -155,7 +183,7 @@ export default function MonitorPage() {
           <span className="text-lg">📅</span><span className="text-[11px]">History</span>
         </Link>
         <button className="flex-1 py-4 t-accent flex flex-col items-center gap-1">
-          <span className="text-lg">📈</span><span className="text-[11px] font-semibold">Monitor</span>
+          <span className="text-lg">📈</span><span className="text-[11px] font-semibold">Analysis</span>
         </button>
         <Link href="/settings" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
           <span className="text-lg">⚙️</span><span className="text-[11px]">Settings</span>

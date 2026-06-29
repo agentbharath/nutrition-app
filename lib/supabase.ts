@@ -34,5 +34,6 @@ export interface DailyLog {
   sodium_consumed?: number
   fiber_consumed?: number
   carbs_consumed?: number
+  meal_customizations?: unknown
   notes?: string
 }
