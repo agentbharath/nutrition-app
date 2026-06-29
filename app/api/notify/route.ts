@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
 import { createClient } from '@supabase/supabase-js'
+import { getClaudeModel, generateDailyClaudeReport, generateWeeklyClaudeReport } from '@/lib/claude-nutrition'
 import { QuickAddEntry, analyzeFoodDay, buildDailyFoodSummary, buildWeeklySummary, getPacificDate, toMonitorDay } from '@/lib/nutrition-monitor'
-import { DailyLog } from '@/lib/supabase'
+import { DailyLog, NutritionAiReport } from '@/lib/supabase'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -14,6 +15,37 @@ webpush.setVapidDetails(
   process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!,
   process.env.VAPID_PRIVATE_KEY!
 )
+
+async function getPreviousWeeklyReport(beforeDate: string) {
+  const { data } = await supabase
+    .from('nutrition_ai_reports')
+    .select('*')
+    .eq('report_type', 'weekly')
+    .lt('period_end', beforeDate)
+    .order('period_end', { ascending: false })
+    .limit(1)
+    .maybeSingle<NutritionAiReport>()
+
+  return data?.analysis || null
+}
+
+async function saveAiReport(report: NutritionAiReport) {
+  const { error } = await supabase
+    .from('nutrition_ai_reports')
+    .upsert(report, { onConflict: 'report_type,period_start,period_end' })
+
+  if (error) console.error('Could not save AI report', error)
+}
+
+async function getQuickAddsForDates(dates: string[]) {
+  if (dates.length === 0) return []
+  const { data } = await supabase
+    .from('quick_adds')
+    .select('*')
+    .in('date', dates)
+    .returns<QuickAddEntry[]>()
+  return data || []
+}
 
 async function buildAnalysisMessage(type: string) {
   if (type === 'daily-analysis') {
@@ -33,14 +65,27 @@ async function buildAnalysisMessage(type: string) {
       }
     }
 
-    const { data: quickAdds } = await supabase
-      .from('quick_adds')
-      .select('*')
-      .eq('date', date)
-      .returns<QuickAddEntry[]>()
+    const quickAdds = await getQuickAddsForDates([date])
     const analysis = analyzeFoodDay(log, quickAdds || [])
+    const previousWeekly = await getPreviousWeeklyReport(date)
+    const claudeReport = await generateDailyClaudeReport(analysis, previousWeekly)
 
-    return { ...buildDailyFoodSummary(analysis), url: '/monitor', analyzedDays: 1 }
+    await saveAiReport({
+      report_type: 'daily',
+      period_start: date,
+      period_end: date,
+      model: getClaudeModel(),
+      analysis: claudeReport,
+      input_snapshot: { deterministic_analysis: analysis, previous_weekly_report: previousWeekly },
+    })
+
+    const fallback = buildDailyFoodSummary(analysis)
+    return {
+      title: claudeReport.title || fallback.title,
+      body: claudeReport.summary || fallback.body,
+      url: '/monitor',
+      analyzedDays: 1,
+    }
   }
 
   if (type === 'weekly-analysis') {
@@ -53,7 +98,8 @@ async function buildAnalysisMessage(type: string) {
       .limit(7)
       .returns<DailyLog[]>()
 
-    const days = (logs || []).map(toMonitorDay)
+    const logData = logs || []
+    const days = logData.map(toMonitorDay)
     if (days.length === 0) {
       return {
         title: 'Weekly nutrition report',
@@ -63,7 +109,28 @@ async function buildAnalysisMessage(type: string) {
       }
     }
 
-    return { ...buildWeeklySummary(days), url: '/monitor', analyzedDays: days.length }
+    const sortedLogs = [...logData].sort((a, b) => a.date.localeCompare(b.date))
+    const quickAdds = await getQuickAddsForDates(sortedLogs.map((log) => log.date))
+    const analyses = sortedLogs.map((log) => analyzeFoodDay(log, quickAdds.filter((item) => item.date === log.date)))
+    const previousWeekly = await getPreviousWeeklyReport(sortedLogs[0].date)
+    const claudeReport = await generateWeeklyClaudeReport(analyses, previousWeekly)
+
+    await saveAiReport({
+      report_type: 'weekly',
+      period_start: sortedLogs[0].date,
+      period_end: sortedLogs[sortedLogs.length - 1].date,
+      model: getClaudeModel(),
+      analysis: claudeReport,
+      input_snapshot: { deterministic_analyses: analyses, previous_weekly_report: previousWeekly },
+    })
+
+    const fallback = buildWeeklySummary(days)
+    return {
+      title: claudeReport.title || fallback.title,
+      body: claudeReport.summary || fallback.body,
+      url: '/monitor',
+      analyzedDays: days.length,
+    }
   }
 
   return null

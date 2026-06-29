@@ -37,3 +37,15 @@ export interface DailyLog {
   meal_customizations?: unknown
   notes?: string
 }
+
+export interface NutritionAiReport {
+  id?: string
+  report_type: 'daily' | 'weekly'
+  period_start: string
+  period_end: string
+  model: string
+  analysis: unknown
+  input_snapshot?: unknown
+  created_at?: string
+  updated_at?: string
+}

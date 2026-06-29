@@ -2,11 +2,21 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { supabase, DailyLog } from '@/lib/supabase'
+import type { ClaudeNutritionReport } from '@/lib/claude-nutrition'
 import { analyzeFoodDay, formatMonitorDate, QuickAddEntry, toMonitorDay, weeklyScore } from '@/lib/nutrition-monitor'
+
+interface AiReportRow {
+  report_type: 'daily' | 'weekly'
+  period_start: string
+  period_end: string
+  model: string
+  analysis: ClaudeNutritionReport
+}
 
 export default function MonitorPage() {
   const [logs, setLogs] = useState<DailyLog[]>([])
   const [quickAdds, setQuickAdds] = useState<QuickAddEntry[]>([])
+  const [aiReports, setAiReports] = useState<AiReportRow[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -16,8 +26,14 @@ export default function MonitorPage() {
       const { data: quickAddData } = dates.length
         ? await supabase.from('quick_adds').select('*').in('date', dates)
         : { data: [] }
+      const { data: reportData } = await supabase
+        .from('nutrition_ai_reports')
+        .select('report_type, period_start, period_end, model, analysis')
+        .order('period_end', { ascending: false })
+        .limit(14)
       setLogs(logData || [])
       setQuickAdds((quickAddData || []) as QuickAddEntry[])
+      setAiReports((reportData || []) as AiReportRow[])
       setLoading(false)
     }
     load()
@@ -32,6 +48,10 @@ export default function MonitorPage() {
   const latestAnalysis = selectedLog
     ? analyzeFoodDay(selectedLog, quickAdds.filter((item) => item.date === selectedLog.date))
     : null
+  const latestDailyAi = selectedLog
+    ? aiReports.find((report) => report.report_type === 'daily' && report.period_end === selectedLog.date)
+    : null
+  const latestWeeklyAi = aiReports.find((report) => report.report_type === 'weekly')
   const weekAnalyses = logs.slice(0, 7).map((log) => analyzeFoodDay(log, quickAdds.filter((item) => item.date === log.date)))
   const repeatedWatches = weekAnalyses.flatMap((analysis) => analysis.watch)
   const sodiumWatchCount = repeatedWatches.filter((item) => item.toLowerCase().includes('sodium')).length
@@ -59,6 +79,24 @@ export default function MonitorPage() {
         </div>
       ) : latestAnalysis ? (
         <div className="px-4 space-y-3">
+          {latestDailyAi && (
+            <section className="t-card rounded-2xl p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs t-muted uppercase tracking-wider">Claude daily coach</p>
+                  <h2 className="text-lg font-bold t-text mt-1">{latestDailyAi.analysis.title}</h2>
+                </div>
+                <p className="text-[10px] t-muted text-right">{latestDailyAi.model}</p>
+              </div>
+              <p className="text-sm t-muted mt-2">{latestDailyAi.analysis.summary}</p>
+              <div className="mt-3 space-y-2">
+                {latestDailyAi.analysis.next_actions?.map((item) => (
+                  <p key={item} className="text-sm t-text">→ {item}</p>
+                ))}
+              </div>
+            </section>
+          )}
+
           <section className="t-card rounded-2xl p-4">
             <p className="text-xs t-muted uppercase tracking-wider">Latest analysis</p>
             <h2 className="text-lg font-bold t-text mt-1">{formatMonitorDate(latestAnalysis.date)}</h2>
@@ -158,6 +196,41 @@ export default function MonitorPage() {
               <p className="t-text">Fiber short days: <span className="font-semibold">{fiberWatchCount}</span></p>
             </div>
           </section>
+
+          {latestWeeklyAi && (
+            <section className="t-card rounded-2xl p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs t-muted uppercase tracking-wider">Claude progressive report</p>
+                  <h2 className="text-lg font-bold t-text mt-1">{latestWeeklyAi.analysis.title}</h2>
+                </div>
+                <p className="text-[10px] t-muted text-right">
+                  {formatMonitorDate(latestWeeklyAi.period_start)} - {formatMonitorDate(latestWeeklyAi.period_end)}
+                </p>
+              </div>
+              <p className="text-sm t-muted mt-2">{latestWeeklyAi.analysis.summary}</p>
+              {Boolean(latestWeeklyAi.analysis.progress?.length) && (
+                <div className="mt-3">
+                  <p className="text-xs t-muted uppercase tracking-wider mb-2">Progress</p>
+                  <div className="space-y-2">
+                    {latestWeeklyAi.analysis.progress?.map((item) => (
+                      <p key={item} className="text-sm t-text">✓ {item}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {Boolean(latestWeeklyAi.analysis.focus_goals?.length) && (
+                <div className="mt-3">
+                  <p className="text-xs t-muted uppercase tracking-wider mb-2">Next week focus</p>
+                  <div className="space-y-2">
+                    {latestWeeklyAi.analysis.focus_goals?.map((item) => (
+                      <p key={item} className="text-sm t-text">→ {item}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+          )}
 
           <section className="t-card rounded-2xl p-4">
             <p className="text-xs t-muted uppercase tracking-wider mb-3">Recent daily analyses</p>

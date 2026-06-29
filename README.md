@@ -16,12 +16,21 @@ Personal daily nutrition tracker — 1800 cal | 140g protein | <1500mg sodium
 | `VAPID_PRIVATE_KEY` | `FatTUWdv4pvkCTMRWH0OALwAsL1QFq174tUkM6pnhaQ` |
 | `VAPID_EMAIL` | `mailto:bharath@nutrition.app` |
 | `CRON_SECRET` | `nutrition-cron-secret-2026` |
+| `ANTHROPIC_API_KEY` | Claude API key for scheduled food analysis |
+| `ANTHROPIC_MODEL` | Optional, defaults to `claude-sonnet-4-5-20250929` |
+
+## Claude Analysis Setup
+
+1. Run `supabase/nutrition_ai_reports.sql` in the Supabase SQL editor.
+2. Add `ANTHROPIC_API_KEY` to Vercel environment variables.
+3. Optional: set `ANTHROPIC_MODEL=claude-haiku-4-5-20251001` for cheaper daily/weekly reports, or leave unset for Sonnet.
 
 ## Features
 - 📋 Today screen with 5 progress rings
 - 🥗 Meal suggestions by day type (WFH/Office/Chipotle/Soya/Chana/Sunday)
 - ✓ Meal confirmation + swap options
 - 🔔 Push notifications at 12 PM (lunch) and 6 PM (dinner) PST
+- 🤖 Claude daily food analysis + progressive weekly reports
 - 📅 History list with expandable day details
 - ⚙️ Settings with notification toggle
 - 📱 PWA — installable to phone home screen
