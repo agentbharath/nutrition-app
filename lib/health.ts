@@ -394,9 +394,9 @@ async function googleDailyRollupOptional(accessToken: string, dataType: string, 
 
 async function googleSleepForDateOptional(accessToken: string, date: string) {
   try {
-    const raw = await googleDataPointsList(accessToken, 'sleep', date)
+    const raw = await googleDataPointsList(accessToken, 'sleep')
     return {
-      ...extractSleepSummary(raw),
+      ...extractSleepSummary(raw, date),
       raw,
     }
   } catch (error) {
@@ -432,13 +432,11 @@ async function googleDailyRollup(accessToken: string, dataType: string, date: st
   return data as Record<string, unknown>
 }
 
-async function googleDataPointsList(accessToken: string, dataType: string, date: string) {
-  const nextDate = getNextDateString(date)
+async function googleDataPointsList(accessToken: string, dataType: string) {
   const url = new URL(`${GOOGLE_HEALTH_API_BASE}/v4/users/me/dataTypes/${encodeURIComponent(dataType)}/dataPoints`)
-  url.searchParams.set('pageSize', '25')
-  url.searchParams.set('start_time', toPacificDateTime(date, '00:00:00'))
-  url.searchParams.set('end_time', toPacificDateTime(nextDate, '00:00:00'))
+  url.searchParams.set('pageSize', '50')
   const response = await fetch(url, {
+    method: 'GET',
     headers: {
       authorization: `Bearer ${accessToken}`,
     },
@@ -450,12 +448,14 @@ async function googleDataPointsList(accessToken: string, dataType: string, date:
   return data as Record<string, unknown>
 }
 
-function extractSleepSummary(raw: unknown) {
+function extractSleepSummary(raw: unknown, date: string) {
   const points = Array.isArray(asRecord(raw).dataPoints) ? asRecord(raw).dataPoints as unknown[] : []
+  const matchingPoints = points.filter((point) => getSleepCivilEndDate(point) === date)
+  const scopedPoints = matchingPoints.length > 0 ? matchingPoints : points.length === 1 ? points : []
   let minutesAsleep = 0
   let minutesInSleepPeriod = 0
 
-  for (const point of points) {
+  for (const point of scopedPoints) {
     const summary = asRecord(asRecord(asRecord(point).sleep).summary)
     const asleep = numberOrNull(summary.minutesAsleep)
     const inPeriod = numberOrNull(summary.minutesInSleepPeriod)
@@ -468,6 +468,19 @@ function extractSleepSummary(raw: unknown) {
     ? Math.round((minutesAsleep / minutesInSleepPeriod) * 100)
     : null
   return { minutes, efficiency }
+}
+
+function getSleepCivilEndDate(point: unknown) {
+  const pointRecord = asRecord(point)
+  const sleep = asRecord(pointRecord.sleep)
+  const interval = asRecord(sleep.interval)
+  const civilEndTime = asRecord(interval.civilEndTime || interval.civil_end_time || pointRecord.civilEndTime)
+  const date = asRecord(civilEndTime.date)
+  const year = numberOrNull(date.year)
+  const month = numberOrNull(date.month)
+  const day = numberOrNull(date.day)
+  if (year === null || month === null || day === null) return null
+  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 }
 
 async function upsertHealthMetrics(supabase: SupabaseClient, metrics: HealthDailyMetrics) {
@@ -511,25 +524,6 @@ function toCivilDayRange(date: string) {
     start: { date: { year, month, day }, time: { hours: 0, minutes: 0, seconds: 0, nanos: 0 } },
     end: { date: { year: endYear, month: endMonth, day: endDay }, time: { hours: 0, minutes: 0, seconds: 0, nanos: 0 } },
   }
-}
-
-function getNextDateString(date: string) {
-  const next = new Date(`${date}T12:00:00.000Z`)
-  next.setUTCDate(next.getUTCDate() + 1)
-  return next.toISOString().slice(0, 10)
-}
-
-function toPacificDateTime(date: string, time: string) {
-  return `${date}T${time}${getPacificOffset(date)}`
-}
-
-function getPacificOffset(date: string) {
-  const zoned = new Date(`${date}T12:00:00.000Z`)
-  const zone = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'America/Los_Angeles',
-    timeZoneName: 'longOffset',
-  }).formatToParts(zoned).find((part) => part.type === 'timeZoneName')?.value
-  return zone?.replace('GMT', '') || '-08:00'
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
