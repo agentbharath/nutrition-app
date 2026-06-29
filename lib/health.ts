@@ -436,7 +436,8 @@ async function googleDataPointsList(accessToken: string, dataType: string, date:
   const nextDate = getNextDateString(date)
   const url = new URL(`${GOOGLE_HEALTH_API_BASE}/v4/users/me/dataTypes/${encodeURIComponent(dataType)}/dataPoints`)
   url.searchParams.set('pageSize', '25')
-  url.searchParams.set('filter', `sleep.interval.civil_end_time >= "${date}" AND sleep.interval.civil_end_time < "${nextDate}"`)
+  url.searchParams.set('startTime', toPacificDateTime(date, '00:00:00'))
+  url.searchParams.set('endTime', toPacificDateTime(nextDate, '00:00:00'))
   const response = await fetch(url, {
     headers: {
       authorization: `Bearer ${accessToken}`,
@@ -516,6 +517,19 @@ function getNextDateString(date: string) {
   const next = new Date(`${date}T12:00:00.000Z`)
   next.setUTCDate(next.getUTCDate() + 1)
   return next.toISOString().slice(0, 10)
+}
+
+function toPacificDateTime(date: string, time: string) {
+  return `${date}T${time}${getPacificOffset(date)}`
+}
+
+function getPacificOffset(date: string) {
+  const zoned = new Date(`${date}T12:00:00.000Z`)
+  const zone = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    timeZoneName: 'longOffset',
+  }).formatToParts(zoned).find((part) => part.type === 'timeZoneName')?.value
+  return zone?.replace('GMT', '') || '-08:00'
 }
 
 function asRecord(value: unknown): Record<string, unknown> {

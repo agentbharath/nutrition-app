@@ -14,7 +14,7 @@ export async function GET() {
 
   try {
     const connection = await getHealthConnection()
-    const latest = await getLatestHealthMetrics(7)
+    const latest = await getLatestHealthMetrics(14)
     return NextResponse.json({
       configured: true,
       connected: Boolean(connection),

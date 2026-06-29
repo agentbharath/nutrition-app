@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
       synced: synced.length - failed.length,
       failed: failed.length,
       days,
+      dates: synced.map((item) => item && typeof item === 'object' && 'date' in item ? item.date : null).filter(Boolean),
       errors: failed,
     })
   } catch (error) {
