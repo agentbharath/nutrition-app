@@ -25,6 +25,8 @@ Personal daily nutrition tracker — 1800 cal | 140g protein | <1500mg sodium
 2. Add `ANTHROPIC_API_KEY` to Vercel environment variables.
 3. Optional: set `ANTHROPIC_MODEL=claude-haiku-4-5-20251001` for cheaper daily/weekly reports, or leave unset for Sonnet.
 
+Claude is prompted with a body-composition goal profile: reduce belly/visceral fat while preserving lean muscle, using the June 19, 2026 body snapshot as context.
+
 ## Features
 - 📋 Today screen with 5 progress rings
 - 🥗 Meal suggestions by day type (WFH/Office/Chipotle/Soya/Chana/Sunday)

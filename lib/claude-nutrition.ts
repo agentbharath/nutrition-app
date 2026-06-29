@@ -22,6 +22,36 @@ interface ClaudeResponse {
 
 const CLAUDE_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250929'
 
+const USER_GOAL_PROFILE = {
+  primary_goal: 'Reduce belly and visceral fat while preserving or increasing lean muscle.',
+  coaching_lens: [
+    'Favor a sustainable calorie deficit, not crash dieting.',
+    'Protect muscle with high protein, consistent strength training support, and enough gym-day carbs.',
+    'Treat sodium spikes as water-retention risk and scale-noise, not fat gain.',
+    'Prioritize fiber, minimally processed foods, and consistent meal quality for satiety and waist reduction.',
+  ],
+  body_snapshot: {
+    date: '2026-06-19',
+    weight_kg: 72.95,
+    previous_weight_kg: 74.7,
+    lost_so_far_kg: 1.75,
+    bmi: 23.3,
+    muscle_mass_kg: 38.7,
+    muscle_percentage: 53,
+    fat_mass_kg: 14.5,
+    body_fat_percentage: 19.9,
+    visceral_fat_index: 7,
+    subcutaneous_fat_percentage: 17.8,
+    bmr_kcal: 1593,
+  },
+  interpretation_rules: [
+    'Praise days that preserve muscle: protein near or above target, reasonable calories, and gym-day recovery carbs.',
+    'Flag days that may hurt muscle retention: low protein, very low calories on training days, or repeated missed meals.',
+    'Flag belly-fat goal risks: repeated calorie surplus, low fiber, high-sodium packaged foods, and poor satiety setup.',
+    'For weekly progress, focus on trend behavior: consistency, waist/fat-loss support, sodium-water noise, and muscle-preservation habits.',
+  ],
+}
+
 function compactAnalysis(analysis: FoodAnalysis) {
   return {
     date: analysis.date,
@@ -123,6 +153,7 @@ export async function generateDailyClaudeReport(analysis: FoodAnalysis, previous
     'Limits: summary <= 45 words; each array <= 3 short strings.',
     'If previous weekly focus goals are present, mention whether today helped or hurt them.',
     JSON.stringify({
+      user_goal_profile: USER_GOAL_PROFILE,
       daily_log: compactAnalysis(analysis),
       previous_weekly_report: previousWeekly || null,
     }),
@@ -149,6 +180,7 @@ export async function generateWeeklyClaudeReport(analyses: FoodAnalysis[], previ
     'Limits: summary <= 55 words; each array <= 3 short strings.',
     'Focus on repeated food patterns, not generic advice.',
     JSON.stringify({
+      user_goal_profile: USER_GOAL_PROFILE,
       targets: TARGETS,
       days: scoreDays,
       previous_weekly_report: previousWeekly || null,
