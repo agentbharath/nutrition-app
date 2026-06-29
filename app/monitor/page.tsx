@@ -57,13 +57,17 @@ export default function MonitorPage() {
   const latestAnalysis = selectedLog
     ? analyzeFoodDay(selectedLog, quickAdds.filter((item) => item.date === selectedLog.date))
     : null
-  const latestDailyAi = selectedLog
-    ? aiReports.find((report) => report.report_type === 'daily' && report.period_end === selectedLog.date)
-    : null
   const latestWeeklyAi = aiReports.find((report) => report.report_type === 'weekly')
   const weekAnalyses = logs.slice(0, 7).map((log) => analyzeFoodDay(log, quickAdds.filter((item) => item.date === log.date)))
   const weekHealth = healthMetrics.slice(0, 7)
   const weekRows = buildHealthFoodRows(weekHealth, weekAnalyses)
+  const [selectedDate, setSelectedDate] = useState('')
+  const activeDate = selectedDate && weekRows.some((row) => row.date === selectedDate)
+    ? selectedDate
+    : weekRows[0]?.date || ''
+  const selectedRow = weekRows.find((row) => row.date === activeDate)
+  const selectedAnalysis = weekAnalyses.find((analysis) => analysis.date === activeDate) || latestAnalysis
+  const selectedDailyAi = aiReports.find((report) => report.report_type === 'daily' && report.period_end === activeDate)
   const repeatedWatches = weekAnalyses.flatMap((analysis) => analysis.watch)
   const sodiumWatchCount = repeatedWatches.filter((item) => item.toLowerCase().includes('sodium')).length
   const proteinWatchCount = repeatedWatches.filter((item) => item.toLowerCase().includes('protein')).length
@@ -90,162 +94,158 @@ export default function MonitorPage() {
         </div>
       ) : latestAnalysis ? (
         <div className="px-4 space-y-3">
-          {latestDailyAi && (
-            <section className="t-card rounded-2xl p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-xs t-muted uppercase tracking-wider">Claude daily coach</p>
-                  <h2 className="text-lg font-bold t-text mt-1">{latestDailyAi.analysis.title}</h2>
-                </div>
-                <p className="text-[10px] t-muted text-right">{latestDailyAi.model}</p>
-              </div>
-              <p className="text-sm t-muted mt-2">{latestDailyAi.analysis.summary}</p>
-              <div className="mt-3 space-y-2">
-                {latestDailyAi.analysis.next_actions?.map((item) => (
-                  <p key={item} className="text-sm t-text">→ {item}</p>
-                ))}
-              </div>
-            </section>
-          )}
-
-          <section className="t-card rounded-2xl p-4">
-            <p className="text-xs t-muted uppercase tracking-wider">Latest analysis</p>
-            <h2 className="text-lg font-bold t-text mt-1">{formatMonitorDate(latestAnalysis.date)}</h2>
-            <p className="text-sm t-muted mt-2">{latestAnalysis.headline}</p>
-            <div className="grid grid-cols-5 gap-1.5 mt-4">
-              {[
-                ['Cal', Math.round(latestAnalysis.totals.cal)],
-                ['P', `${Math.round(latestAnalysis.totals.protein)}g`],
-                ['Na', `${Math.round(latestAnalysis.totals.sodium)}mg`],
-                ['F', `${Math.round(latestAnalysis.totals.fiber)}g`],
-                ['C', `${Math.round(latestAnalysis.totals.carbs)}g`],
-              ].map(([label, value]) => (
-                <div key={label} className="macro-pill rounded-xl p-2 text-center">
-                  <p className="text-xs font-bold t-text">{value}</p>
-                  <p className="text-[10px] t-muted">{label}</p>
-                </div>
-              ))}
-            </div>
-          </section>
-
-          {weekAnalyses.length > 0 && (
-            <section className="t-card rounded-2xl p-4">
+          {weekAnalyses.length > 0 && selectedRow && selectedAnalysis && (
+            <section className="t-card rounded-2xl p-4 space-y-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs t-muted uppercase tracking-wider">Last 7 daily reports</p>
-                  <h2 className="text-lg font-bold t-text mt-1">Each day separated</h2>
+                  <h2 className="text-lg font-bold t-text mt-1">Pick a day</h2>
                 </div>
                 <p className="text-xs t-muted text-right">
                   {weekRows.length} day{weekRows.length === 1 ? '' : 's'}
                 </p>
               </div>
-              <p className="text-xs t-muted mt-3">
-                Intake is food logged. Burned is total calories out, including resting and sleeping baseline. No weekly blending here.
-              </p>
-              {weekHealth.length > 0 && weekHealth.every((item) => typeof item.sleep_minutes !== 'number') && (
-                <p className="text-xs t-muted mt-1">Sleep is blank until Google Health returns sleep data.</p>
-              )}
-              <div className="mt-4 space-y-2">
-                {weekRows.map((row) => (
-                  <div key={row.date} className="macro-pill rounded-xl p-3">
-                    <div className="flex items-start justify-between gap-3 border-b t-border pb-2">
-                      <div>
-                        <p className="text-xs font-semibold t-text">{formatMonitorDate(row.date)}</p>
-                        <p className="text-[11px] t-muted mt-0.5">{row.headline || 'No food analysis for this day.'}</p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-xs font-bold t-text">{row.intake !== null ? `${row.intake} cal` : '- cal'}</p>
-                        <p className="text-[11px] t-muted">{row.readiness !== null ? `${row.readiness} readiness` : 'No readiness'}</p>
-                      </div>
+
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {weekRows.map((row) => {
+                  const active = row.date === activeDate
+                  const day = new Date(`${row.date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short' })
+                  const date = new Date(`${row.date}T12:00:00`).getDate()
+                  return (
+                    <button
+                      key={row.date}
+                      onClick={() => setSelectedDate(row.date)}
+                      className="shrink-0 rounded-2xl px-3 py-2 text-left transition-all"
+                      style={{
+                        minWidth: 76,
+                        background: active ? 'var(--accent)' : 'var(--card)',
+                        color: active ? 'var(--accent-text)' : 'var(--text)',
+                        border: active ? '1px solid var(--accent)' : '1px solid var(--border)',
+                        boxShadow: active ? '0 8px 22px rgba(0,0,0,0.12)' : 'none',
+                      }}
+                    >
+                      <p className="text-[10px] font-semibold uppercase leading-tight">{day}</p>
+                      <p className="text-lg font-bold leading-tight">{date}</p>
+                      <p className="text-[10px] leading-tight" style={{ opacity: active ? 0.9 : 0.65 }}>
+                        {row.intake !== null ? `${row.intake} cal` : 'No food'}
+                      </p>
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="rounded-2xl p-4 macro-pill">
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-xs t-muted uppercase tracking-wider">Selected day</p>
+                    <h2 className="text-lg font-bold t-text mt-1">{formatMonitorDate(activeDate)}</h2>
+                  </div>
+                  <p className="text-xs font-semibold t-accent text-right">
+                    {selectedRow.readiness !== null ? `${selectedRow.readiness} readiness` : 'No readiness'}
+                  </p>
+                </div>
+                <p className="text-sm t-muted mt-2">{selectedRow.headline || selectedAnalysis.headline}</p>
+
+                <div className="grid grid-cols-5 gap-1.5 mt-4">
+                  {[
+                    ['Cal', selectedRow.intake !== null ? selectedRow.intake : '-'],
+                    ['P', selectedRow.protein !== null ? `${selectedRow.protein}g` : '-'],
+                    ['Na', selectedRow.sodium !== null ? `${selectedRow.sodium}mg` : '-'],
+                    ['Steps', selectedRow.steps !== null ? selectedRow.steps.toLocaleString() : '-'],
+                    ['Burn', selectedRow.burned !== null ? selectedRow.burned : '-'],
+                  ].map(([label, value]) => (
+                    <div key={label} className="rounded-lg p-1.5 text-center" style={{ background: 'var(--card)' }}>
+                      <p className="text-[10px] font-bold t-text leading-tight">{value}</p>
+                      <p className="text-[9px] t-muted leading-tight">{label}</p>
                     </div>
-                    <div className="grid grid-cols-5 gap-1.5 mt-3">
-                      {[
-                        ['P', row.protein !== null ? `${row.protein}g` : '-'],
-                        ['Na', row.sodium !== null ? `${row.sodium}mg` : '-'],
-                        ['F', row.fiber !== null ? `${row.fiber}g` : '-'],
-                        ['Steps', row.steps !== null ? row.steps.toLocaleString() : '-'],
-                        ['Burn', row.burned !== null ? `${row.burned}` : '-'],
-                      ].map(([label, value]) => (
-                        <div key={label} className="rounded-lg p-1.5 text-center" style={{ background: 'var(--card)' }}>
-                          <p className="text-[10px] font-bold t-text leading-tight">{value}</p>
-                          <p className="text-[9px] t-muted leading-tight">{label}</p>
+                  ))}
+                </div>
+                <p className="text-[11px] t-muted mt-2">
+                  Fiber: {selectedRow.fiber !== null ? `${selectedRow.fiber}g` : '-'} • Sleep: {selectedRow.sleepHours !== null ? `${selectedRow.sleepHours}h` : 'not synced'}
+                </p>
+                {selectedRow.readinessNote && <p className="text-[10px] t-muted mt-1">{selectedRow.readinessNote}</p>}
+              </div>
+
+              {selectedDailyAi ? (
+                <div className="rounded-2xl p-4" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="text-xs t-muted uppercase tracking-wider">Claude daily report</p>
+                      <h3 className="text-base font-bold t-text mt-1">{selectedDailyAi.analysis.title}</h3>
+                    </div>
+                    <p className="text-[10px] t-muted text-right">{selectedDailyAi.model}</p>
+                  </div>
+                  <p className="text-sm t-muted mt-2">{selectedDailyAi.analysis.summary}</p>
+                  {Boolean(selectedDailyAi.analysis.next_actions?.length) && (
+                    <div className="mt-3 space-y-1.5">
+                      {selectedDailyAi.analysis.next_actions?.map((item) => (
+                        <p key={item} className="text-sm t-text">→ {item}</p>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="rounded-2xl p-4" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+                  <p className="text-xs t-muted uppercase tracking-wider">Claude daily report</p>
+                  <p className="text-sm t-muted mt-1">No Claude report saved for this date yet. The midnight run saves it under the day it analyzes.</p>
+                </div>
+              )}
+
+              <details className="rounded-2xl p-4" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+                <summary className="list-none cursor-pointer flex items-center justify-between gap-3">
+                  <span className="text-sm font-semibold t-text">Food and rule details</span>
+                  <span className="text-xs t-muted">Open</span>
+                </summary>
+                <div className="mt-3 space-y-3">
+                  {selectedAnalysis.eaten.length === 0 ? (
+                    <p className="text-sm t-muted">No eaten meals were confirmed for this day.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {selectedAnalysis.eaten.map((entry, index) => (
+                        <div key={`${entry.slot}-${entry.name}-${index}`} className="rounded-xl p-3 macro-pill">
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <p className="text-[11px] uppercase tracking-wider t-muted">{entry.slot}</p>
+                              <p className="text-sm font-semibold t-text">{entry.name}</p>
+                            </div>
+                            <p className="text-xs font-semibold t-accent shrink-0">{Math.round(entry.cal)} cal</p>
+                          </div>
+                          <p className="text-[11px] t-muted mt-2">
+                            {Math.round(entry.protein * 10) / 10}g P • {Math.round(entry.sodium)}mg Na • {Math.round(entry.fiber * 10) / 10}g fiber • {Math.round(entry.carbs * 10) / 10}g carbs
+                          </p>
                         </div>
                       ))}
                     </div>
-                    <p className="text-[11px] t-muted mt-2">
-                      Sleep: {row.sleepHours !== null ? `${row.sleepHours}h` : 'not synced'} • Burned: {row.burned !== null ? `${row.burned} cal` : 'not synced'}
-                    </p>
-                    {row.readinessNote && <p className="text-[10px] t-muted mt-2">{row.readinessNote}</p>}
+                  )}
+
+                  <div className="grid grid-cols-1 gap-2">
+                    <div>
+                      <p className="text-xs t-muted uppercase tracking-wider mb-1">Good signals</p>
+                      {(selectedAnalysis.positives.length ? selectedAnalysis.positives : ['No strong positives yet.']).map((item) => (
+                        <p key={item} className="text-sm t-text">✓ {item}</p>
+                      ))}
+                    </div>
+                    <div>
+                      <p className="text-xs t-muted uppercase tracking-wider mb-1">Watch</p>
+                      {(selectedAnalysis.watch.length ? selectedAnalysis.watch : ['No major issues from what was eaten.']).map((item) => (
+                        <p key={item} className="text-sm t-text">• {item}</p>
+                      ))}
+                    </div>
+                    <div>
+                      <p className="text-xs t-muted uppercase tracking-wider mb-1">Next move</p>
+                      {(selectedAnalysis.suggestions.length ? selectedAnalysis.suggestions : ['Keep the same pattern unless hunger or training changes.']).map((item) => (
+                        <p key={item} className="text-sm t-text">→ {item}</p>
+                      ))}
+                    </div>
                   </div>
-                ))}
-              </div>
+                </div>
+              </details>
+
+              <p className="text-xs t-muted">
+                A report generated at 12:00 AM for the previous day is saved and shown on that previous day&apos;s date.
+              </p>
             </section>
           )}
-
-          <section className="t-card rounded-2xl p-4">
-            <p className="text-xs t-muted uppercase tracking-wider mb-3">What was eaten</p>
-            {latestAnalysis.eaten.length === 0 ? (
-              <p className="text-sm t-muted">No eaten meals were confirmed for this day.</p>
-            ) : (
-              <div className="space-y-2">
-                {latestAnalysis.eaten.map((entry, index) => (
-                  <div key={`${entry.slot}-${entry.name}-${index}`} className="rounded-xl p-3 macro-pill">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="text-[11px] uppercase tracking-wider t-muted">{entry.slot}</p>
-                        <p className="text-sm font-semibold t-text">{entry.name}</p>
-                      </div>
-                      <p className="text-xs font-semibold t-accent shrink-0">{Math.round(entry.cal)} cal</p>
-                    </div>
-                    <p className="text-[11px] t-muted mt-2">
-                      {Math.round(entry.protein * 10) / 10}g P • {Math.round(entry.sodium)}mg Na • {Math.round(entry.fiber * 10) / 10}g fiber • {Math.round(entry.carbs * 10) / 10}g carbs
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section className="grid grid-cols-1 gap-3">
-            <div className="t-card rounded-2xl p-4">
-              <p className="text-xs t-muted uppercase tracking-wider mb-3">Good signals</p>
-              {latestAnalysis.positives.length === 0 ? (
-                <p className="text-sm t-muted">No strong positives yet. Add or confirm more food to analyze.</p>
-              ) : (
-                <div className="space-y-2">
-                  {latestAnalysis.positives.map((item) => (
-                    <p key={item} className="text-sm t-text">✓ {item}</p>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="t-card rounded-2xl p-4">
-              <p className="text-xs t-muted uppercase tracking-wider mb-3">Watch</p>
-              {latestAnalysis.watch.length === 0 ? (
-                <p className="text-sm t-accent font-semibold">No major issues from what was eaten.</p>
-              ) : (
-                <div className="space-y-2">
-                  {latestAnalysis.watch.map((item) => (
-                    <p key={item} className="text-sm t-text">• {item}</p>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="t-card rounded-2xl p-4">
-              <p className="text-xs t-muted uppercase tracking-wider mb-3">Next move</p>
-              {latestAnalysis.suggestions.length === 0 ? (
-                <p className="text-sm t-muted">Keep the same pattern unless hunger or training changes.</p>
-              ) : (
-                <div className="space-y-2">
-                  {latestAnalysis.suggestions.map((item) => (
-                    <p key={item} className="text-sm t-text">→ {item}</p>
-                  ))}
-                </div>
-              )}
-            </div>
-          </section>
 
           <section className="t-card rounded-2xl p-4">
             <div className="flex items-start justify-between gap-3">
@@ -297,17 +297,6 @@ export default function MonitorPage() {
             </section>
           )}
 
-          <section className="t-card rounded-2xl p-4">
-            <p className="text-xs t-muted uppercase tracking-wider mb-3">Recent daily analyses</p>
-            <div className="space-y-2">
-              {weekAnalyses.map((analysis) => (
-                <div key={analysis.date} className="border-b t-border pb-2 last:border-b-0 last:pb-0">
-                  <p className="text-sm font-semibold t-text">{formatMonitorDate(analysis.date)}</p>
-                  <p className="text-xs t-muted mt-0.5">{analysis.headline}</p>
-                </div>
-              ))}
-            </div>
-          </section>
         </div>
       ) : (
         null
