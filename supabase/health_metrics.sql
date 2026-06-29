@@ -1,6 +1,6 @@
 create table if not exists health_connections (
   id uuid primary key default gen_random_uuid(),
-  provider text not null check (provider in ('fitbit')),
+  provider text not null check (provider in ('google_health', 'fitbit')),
   provider_user_id text,
   access_token text not null,
   refresh_token text not null,
@@ -15,7 +15,7 @@ create table if not exists health_connections (
 
 create table if not exists health_daily_metrics (
   id uuid primary key default gen_random_uuid(),
-  provider text not null check (provider in ('fitbit')),
+  provider text not null check (provider in ('google_health', 'fitbit')),
   date date not null,
   steps integer,
   calories_out integer,
@@ -35,6 +35,19 @@ create table if not exists health_daily_metrics (
   updated_at timestamptz not null default now(),
   unique (provider, date)
 );
+
+do $$
+begin
+  alter table health_connections drop constraint if exists health_connections_provider_check;
+  alter table health_connections
+    add constraint health_connections_provider_check
+    check (provider in ('google_health', 'fitbit'));
+
+  alter table health_daily_metrics drop constraint if exists health_daily_metrics_provider_check;
+  alter table health_daily_metrics
+    add constraint health_daily_metrics_provider_check
+    check (provider in ('google_health', 'fitbit'));
+end $$;
 
 create or replace function set_health_updated_at()
 returns trigger as $$

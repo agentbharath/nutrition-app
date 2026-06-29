@@ -10,7 +10,7 @@ export async function POST() {
 
   try {
     const supabase = createServiceSupabase()
-    await supabase.from('health_connections').delete().eq('provider', 'fitbit')
+    await supabase.from('health_connections').delete().eq('provider', 'google_health')
     return NextResponse.json({ disconnected: true })
   } catch (error) {
     console.error(error)

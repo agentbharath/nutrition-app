@@ -134,7 +134,7 @@ export default function MonitorPage() {
                   <p className="text-xs t-muted uppercase tracking-wider">Health context</p>
                   <h2 className="text-lg font-bold t-text mt-1">{formatMonitorDate(latestHealth.date)}</h2>
                 </div>
-                <p className="text-xs t-muted text-right">Fitbit</p>
+                <p className="text-xs t-muted text-right">Google Health</p>
               </div>
               <div className="grid grid-cols-4 gap-1.5 mt-4">
                 {[

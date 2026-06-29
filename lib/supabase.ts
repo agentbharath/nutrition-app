@@ -52,7 +52,7 @@ export interface NutritionAiReport {
 
 export interface HealthDailyMetrics {
   id?: string
-  provider: 'fitbit'
+  provider: 'google_health' | 'fitbit'
   date: string
   steps?: number | null
   calories_out?: number | null

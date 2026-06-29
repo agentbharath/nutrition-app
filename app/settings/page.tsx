@@ -8,7 +8,7 @@ import Link from 'next/link'
 interface HealthStatus {
   configured: boolean
   connected: boolean
-  provider?: 'fitbit' | null
+  provider?: 'google_health' | 'fitbit' | null
   last_sync_at?: string | null
   connected_at?: string | null
   latest?: HealthDailyMetrics[]
@@ -222,8 +222,8 @@ export default function SettingsPage() {
         <div className="t-card rounded-2xl p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="font-semibold text-sm t-text mb-0.5">Fitbit Health Sync</p>
-              <p className="text-xs t-muted">Steps, sleep, heart rate, calories burned, weight, and body fat for Claude analysis</p>
+              <p className="font-semibold text-sm t-text mb-0.5">Google Health Sync</p>
+              <p className="text-xs t-muted">Fitbit Charge 6 activity, heart, body, and sleep context for Claude analysis</p>
             </div>
             <span className="text-lg">⌚</span>
           </div>
@@ -233,12 +233,12 @@ export default function SettingsPage() {
           ) : !healthStatus?.configured ? (
             <div className="rounded-xl p-3 mt-3" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
               <p className="text-xs font-semibold" style={{ color: 'var(--amber)' }}>Setup needed</p>
-              <p className="text-xs t-muted mt-1">{healthStatus?.message || 'Add Fitbit env vars and run the health SQL migration.'}</p>
+              <p className="text-xs t-muted mt-1">{healthStatus?.message || 'Add Google Health env vars and run the health SQL migration.'}</p>
             </div>
           ) : healthStatus.connected ? (
             <div className="mt-3 space-y-3">
               <div className="flex items-center justify-between text-xs">
-                <span className="t-muted">Connected to Fitbit</span>
+                <span className="t-muted">Connected to Google Health</span>
                 <span className="t-accent font-semibold">✓ Active</span>
               </div>
               {latestHealth && (
@@ -285,7 +285,7 @@ export default function SettingsPage() {
               className="mt-3 block w-full py-3 rounded-xl text-sm font-semibold text-center transition-all"
               style={{ background: 'var(--accent-dim)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)' }}
             >
-              Connect Fitbit
+              Connect Google Health
             </a>
           )}
         </div>

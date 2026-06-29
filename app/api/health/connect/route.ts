@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { generateOauthState, generateOauthVerifier, getFitbitAuthorizeUrl, healthIntegrationConfigured } from '@/lib/health'
+import { generateOauthState, generateOauthVerifier, getGoogleHealthAuthorizeUrl, healthIntegrationConfigured } from '@/lib/health'
 
 export const runtime = 'nodejs'
 
@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
 
   const state = generateOauthState()
   const verifier = generateOauthVerifier()
-  const authorizeUrl = getFitbitAuthorizeUrl(req.nextUrl.origin, state, verifier)
+  const authorizeUrl = getGoogleHealthAuthorizeUrl(req.nextUrl.origin, state, verifier)
   const response = NextResponse.redirect(authorizeUrl)
 
   response.cookies.set('health_oauth_state', state, {

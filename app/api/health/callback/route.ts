@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { exchangeFitbitCode, saveFitbitConnection, syncFitbitDate } from '@/lib/health'
+import { exchangeGoogleHealthCode, saveGoogleHealthConnection, syncGoogleHealthDate } from '@/lib/health'
 
 export const runtime = 'nodejs'
 
@@ -16,10 +16,10 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const token = await exchangeFitbitCode(code, verifier, req.nextUrl.origin)
-    await saveFitbitConnection(token)
+    const token = await exchangeGoogleHealthCode(code, verifier, req.nextUrl.origin)
+    await saveGoogleHealthConnection(token)
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
-    await syncFitbitDate(today)
+    await syncGoogleHealthDate(today)
     redirect.searchParams.set('health', 'connected')
   } catch (error) {
     console.error(error)

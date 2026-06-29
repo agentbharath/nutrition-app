@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getClaudeModel, generateDailyClaudeReport, generateWeeklyClaudeReport } from '@/lib/claude-nutrition'
 import { QuickAddEntry, analyzeFoodDay, buildDailyFoodSummary, buildWeeklySummary, getPacificDate, toMonitorDay } from '@/lib/nutrition-monitor'
 import { DailyLog, NutritionAiReport } from '@/lib/supabase'
-import { getHealthMetricsForDates, healthIntegrationConfigured, syncRecentFitbitDays } from '@/lib/health'
+import { getHealthMetricsForDates, healthIntegrationConfigured, syncRecentHealthDays } from '@/lib/health'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -50,7 +50,7 @@ async function getQuickAddsForDates(dates: string[]) {
 
 async function buildAnalysisMessage(type: string) {
   if ((type === 'daily-analysis' || type === 'weekly-analysis') && healthIntegrationConfigured()) {
-    await syncRecentFitbitDays(type === 'weekly-analysis' ? 8 : 2).catch((error) => {
+    await syncRecentHealthDays(type === 'weekly-analysis' ? 8 : 2).catch((error) => {
       console.error('Health pre-sync failed', error)
     })
   }

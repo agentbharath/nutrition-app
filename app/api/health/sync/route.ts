@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { healthIntegrationConfigured, syncRecentFitbitDays } from '@/lib/health'
+import { healthIntegrationConfigured, syncRecentHealthDays } from '@/lib/health'
 
 export const runtime = 'nodejs'
 
@@ -14,7 +14,7 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json().catch(() => ({})) as { days?: number }
     const days = Math.min(Math.max(Number(body.days || (isCron ? 8 : 3)), 1), 14)
-    const synced = await syncRecentFitbitDays(days)
+    const synced = await syncRecentHealthDays(days)
     return NextResponse.json({ synced: synced.length, days })
   } catch (error) {
     console.error(error)

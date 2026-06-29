@@ -8,7 +8,7 @@ export async function GET() {
     return NextResponse.json({
       configured: false,
       connected: false,
-      message: 'Add SUPABASE_SERVICE_ROLE_KEY and FITBIT_CLIENT_ID to enable Fitbit health sync.',
+      message: 'Add SUPABASE_SERVICE_ROLE_KEY and GOOGLE_HEALTH_CLIENT_ID to enable Google Health sync.',
     })
   }
 

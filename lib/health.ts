@@ -1,7 +1,7 @@
 import crypto from 'crypto'
 import { createClient, SupabaseClient } from '@supabase/supabase-js'
 
-export type HealthProvider = 'fitbit'
+export type HealthProvider = 'google_health' | 'fitbit'
 
 export interface HealthConnection {
   id?: string
@@ -35,24 +35,60 @@ export interface HealthDailyMetrics {
   raw?: unknown
 }
 
-interface FitbitTokenResponse {
+interface GoogleTokenResponse {
   access_token: string
-  refresh_token: string
+  refresh_token?: string
   expires_in: number
   scope?: string
-  user_id?: string
 }
 
-const FITBIT_AUTHORIZE_URL = 'https://www.fitbit.com/oauth2/authorize'
-const FITBIT_TOKEN_URL = 'https://api.fitbit.com/oauth2/token'
-const FITBIT_API_BASE = 'https://api.fitbit.com'
-const FITBIT_SCOPES = [
-  'activity',
-  'heartrate',
-  'sleep',
-  'weight',
-  'profile',
+interface RollupSpec {
+  dataType: string
+  valuePath: string[]
+  transform?: (value: number) => number
+}
+
+const PROVIDER: HealthProvider = 'google_health'
+const GOOGLE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth'
+const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token'
+const GOOGLE_HEALTH_API_BASE = 'https://health.googleapis.com'
+const GOOGLE_HEALTH_SCOPES = [
+  'https://www.googleapis.com/auth/fitness.activity.read',
+  'https://www.googleapis.com/auth/fitness.heart_rate.read',
+  'https://www.googleapis.com/auth/fitness.sleep.read',
+  'https://www.googleapis.com/auth/fitness.body.read',
 ]
+
+const DAILY_ROLLUPS: Record<string, RollupSpec> = {
+  steps: {
+    dataType: 'com.google.step_count.delta',
+    valuePath: ['step_count_delta', 'intVal'],
+  },
+  calories_out: {
+    dataType: 'com.google.calories.expended',
+    valuePath: ['calories_expended', 'fpVal'],
+  },
+  active_minutes: {
+    dataType: 'com.google.active_minutes',
+    valuePath: ['active_minutes', 'intVal'],
+  },
+  active_zone_minutes: {
+    dataType: 'com.google.active_zone_minutes',
+    valuePath: ['active_zone_minutes', 'intVal'],
+  },
+  resting_heart_rate: {
+    dataType: 'com.google.heart_rate.bpm',
+    valuePath: ['heart_rate_bpm', 'fpVal'],
+  },
+  weight_kg: {
+    dataType: 'com.google.weight',
+    valuePath: ['weight', 'fpVal'],
+  },
+  body_fat_pct: {
+    dataType: 'com.google.body.fat.percentage',
+    valuePath: ['body_fat_percentage', 'fpVal'],
+  },
+}
 
 function getRequiredEnv(name: string) {
   const value = process.env[name]
@@ -64,7 +100,7 @@ export function healthIntegrationConfigured() {
   return Boolean(
     process.env.NEXT_PUBLIC_SUPABASE_URL &&
     process.env.SUPABASE_SERVICE_ROLE_KEY &&
-    process.env.FITBIT_CLIENT_ID
+    process.env.GOOGLE_HEALTH_CLIENT_ID
   )
 }
 
@@ -75,8 +111,8 @@ export function createServiceSupabase(): SupabaseClient {
   )
 }
 
-export function getFitbitRedirectUri(origin: string) {
-  return process.env.FITBIT_REDIRECT_URI || `${origin}/api/health/callback`
+export function getGoogleHealthRedirectUri(origin: string) {
+  return process.env.GOOGLE_HEALTH_REDIRECT_URI || `${origin}/api/health/callback`
 }
 
 export function generateOauthVerifier() {
@@ -87,68 +123,72 @@ export function generateOauthState() {
   return base64Url(crypto.randomBytes(32))
 }
 
-export function getFitbitAuthorizeUrl(origin: string, state: string, verifier: string) {
+export function getGoogleHealthAuthorizeUrl(origin: string, state: string, verifier: string) {
   const codeChallenge = base64Url(crypto.createHash('sha256').update(verifier).digest())
-  const url = new URL(FITBIT_AUTHORIZE_URL)
+  const url = new URL(GOOGLE_AUTH_URL)
   url.searchParams.set('response_type', 'code')
-  url.searchParams.set('client_id', getRequiredEnv('FITBIT_CLIENT_ID'))
-  url.searchParams.set('redirect_uri', getFitbitRedirectUri(origin))
-  url.searchParams.set('scope', FITBIT_SCOPES.join(' '))
+  url.searchParams.set('client_id', getRequiredEnv('GOOGLE_HEALTH_CLIENT_ID'))
+  url.searchParams.set('redirect_uri', getGoogleHealthRedirectUri(origin))
+  url.searchParams.set('scope', GOOGLE_HEALTH_SCOPES.join(' '))
   url.searchParams.set('state', state)
+  url.searchParams.set('access_type', 'offline')
+  url.searchParams.set('prompt', 'consent')
   url.searchParams.set('code_challenge', codeChallenge)
   url.searchParams.set('code_challenge_method', 'S256')
   return url
 }
 
-export async function exchangeFitbitCode(code: string, verifier: string, origin: string) {
+export async function exchangeGoogleHealthCode(code: string, verifier: string, origin: string) {
   const body = new URLSearchParams({
     grant_type: 'authorization_code',
     code,
-    redirect_uri: getFitbitRedirectUri(origin),
-    client_id: getRequiredEnv('FITBIT_CLIENT_ID'),
+    redirect_uri: getGoogleHealthRedirectUri(origin),
+    client_id: getRequiredEnv('GOOGLE_HEALTH_CLIENT_ID'),
     code_verifier: verifier,
   })
-  return fitbitTokenRequest(body)
+  if (process.env.GOOGLE_HEALTH_CLIENT_SECRET) {
+    body.set('client_secret', process.env.GOOGLE_HEALTH_CLIENT_SECRET)
+  }
+  return googleTokenRequest(body)
 }
 
-async function refreshFitbitToken(refreshToken: string) {
+async function refreshGoogleHealthToken(refreshToken: string) {
   const body = new URLSearchParams({
     grant_type: 'refresh_token',
     refresh_token: refreshToken,
-    client_id: getRequiredEnv('FITBIT_CLIENT_ID'),
+    client_id: getRequiredEnv('GOOGLE_HEALTH_CLIENT_ID'),
   })
-  return fitbitTokenRequest(body)
+  if (process.env.GOOGLE_HEALTH_CLIENT_SECRET) {
+    body.set('client_secret', process.env.GOOGLE_HEALTH_CLIENT_SECRET)
+  }
+  return googleTokenRequest(body)
 }
 
-async function fitbitTokenRequest(body: URLSearchParams) {
-  const headers: Record<string, string> = {
-    'content-type': 'application/x-www-form-urlencoded',
-  }
-  if (process.env.FITBIT_CLIENT_SECRET) {
-    const credentials = Buffer.from(`${process.env.FITBIT_CLIENT_ID}:${process.env.FITBIT_CLIENT_SECRET}`).toString('base64')
-    headers.authorization = `Basic ${credentials}`
-  }
-
-  const response = await fetch(FITBIT_TOKEN_URL, {
+async function googleTokenRequest(body: URLSearchParams) {
+  const response = await fetch(GOOGLE_TOKEN_URL, {
     method: 'POST',
-    headers,
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
     body,
   })
   const data = await response.json()
   if (!response.ok) {
-    throw new Error(`Fitbit token request failed: ${response.status} ${JSON.stringify(data).slice(0, 300)}`)
+    throw new Error(`Google Health token request failed: ${response.status} ${JSON.stringify(data).slice(0, 300)}`)
   }
-  return data as FitbitTokenResponse
+  return data as GoogleTokenResponse
 }
 
-export async function saveFitbitConnection(token: FitbitTokenResponse) {
+export async function saveGoogleHealthConnection(token: GoogleTokenResponse) {
+  const existing = await getHealthConnection().catch(() => null)
+  const refreshToken = token.refresh_token || existing?.refresh_token
+  if (!refreshToken) throw new Error('Google did not return a refresh token. Reconnect and approve offline access.')
+
   const supabase = createServiceSupabase()
   const expiresAt = new Date(Date.now() + token.expires_in * 1000).toISOString()
   const row: HealthConnection = {
-    provider: 'fitbit',
-    provider_user_id: token.user_id || null,
+    provider: PROVIDER,
+    provider_user_id: null,
     access_token: token.access_token,
-    refresh_token: token.refresh_token,
+    refresh_token: refreshToken,
     scope: token.scope || null,
     expires_at: expiresAt,
   }
@@ -163,78 +203,65 @@ export async function getHealthConnection(supabase = createServiceSupabase()) {
   const { data, error } = await supabase
     .from('health_connections')
     .select('*')
-    .eq('provider', 'fitbit')
+    .eq('provider', PROVIDER)
     .maybeSingle<HealthConnection>()
   if (error) throw error
   return data
 }
 
-async function getValidFitbitConnection(supabase = createServiceSupabase()) {
+async function getValidGoogleHealthConnection(supabase = createServiceSupabase()) {
   const connection = await getHealthConnection(supabase)
   if (!connection) return null
 
   const expiresAt = new Date(connection.expires_at).getTime()
   if (expiresAt > Date.now() + 5 * 60 * 1000) return connection
 
-  const refreshed = await refreshFitbitToken(connection.refresh_token)
+  const refreshed = await refreshGoogleHealthToken(connection.refresh_token)
   const updated: Partial<HealthConnection> = {
     access_token: refreshed.access_token,
-    refresh_token: refreshed.refresh_token,
+    refresh_token: refreshed.refresh_token || connection.refresh_token,
     scope: refreshed.scope || connection.scope,
     expires_at: new Date(Date.now() + refreshed.expires_in * 1000).toISOString(),
   }
   const { data, error } = await supabase
     .from('health_connections')
     .update(updated)
-    .eq('provider', 'fitbit')
+    .eq('provider', PROVIDER)
     .select('*')
     .single<HealthConnection>()
   if (error) throw error
   return data
 }
 
-export async function syncFitbitDate(date: string, supabase = createServiceSupabase()) {
-  const connection = await getValidFitbitConnection(supabase)
+export async function syncGoogleHealthDate(date: string, supabase = createServiceSupabase()) {
+  const connection = await getValidGoogleHealthConnection(supabase)
   if (!connection) return null
 
-  const [activity, heart, sleep, weight, fat] = await Promise.all([
-    fitbitGetOptional(connection.access_token, `/1/user/-/activities/date/${date}.json`),
-    fitbitGetOptional(connection.access_token, `/1/user/-/activities/heart/date/${date}/1d.json`),
-    fitbitGetOptional(connection.access_token, `/1.2/user/-/sleep/date/${date}.json`),
-    fitbitGetOptional(connection.access_token, `/1/user/-/body/log/weight/date/${date}.json`),
-    fitbitGetOptional(connection.access_token, `/1/user/-/body/log/fat/date/${date}.json`),
-  ])
+  const entries = await Promise.all(
+    Object.entries(DAILY_ROLLUPS).map(async ([key, spec]) => {
+      const rollup = await googleDailyRollupOptional(connection.access_token, spec.dataType, date)
+      const value = getNumberAtPath(rollup, spec.valuePath) ?? firstNumberNearKey(rollup, spec.valuePath[0])
+      return [key, spec.transform && value !== null ? spec.transform(value) : value, rollup] as const
+    })
+  )
 
-  const summary = asRecord(activity.summary)
-  const activeZone = asRecord(summary.activeZoneMinutes)
-  const heartEntry = Array.isArray(heart['activities-heart']) ? asRecord(heart['activities-heart'][0]) : {}
-  const heartValue = asRecord(heartEntry.value)
-  const sleepSummary = asRecord(sleep.summary)
-  const weightRows = Array.isArray(weight.weight) ? weight.weight : []
-  const fatRows = Array.isArray(fat.fat) ? fat.fat : []
-  const weightRow = asRecord(weightRows[0])
-  const fatRow = asRecord(fatRows[0])
-  const lightly = numberOrNull(summary.lightlyActiveMinutes)
-  const fairly = numberOrNull(summary.fairlyActiveMinutes)
-  const very = numberOrNull(summary.veryActiveMinutes)
+  const values = Object.fromEntries(entries.map(([key, value]) => [key, value])) as Record<string, number | null>
+  const raw = Object.fromEntries(entries.map(([key, , rollup]) => [key, rollup]))
 
   const metrics: HealthDailyMetrics = {
-    provider: 'fitbit',
+    provider: PROVIDER,
     date,
-    steps: numberOrNull(summary.steps),
-    calories_out: numberOrNull(summary.caloriesOut),
-    activity_calories: numberOrNull(summary.activityCalories),
-    lightly_active_minutes: lightly,
-    fairly_active_minutes: fairly,
-    very_active_minutes: very,
-    active_minutes: sumNumbers(lightly, fairly, very),
-    active_zone_minutes: numberOrNull(activeZone.totalMinutes) ?? numberOrNull(summary.activeZoneMinutes),
-    resting_heart_rate: numberOrNull(heartValue.restingHeartRate),
-    sleep_minutes: numberOrNull(sleepSummary.totalMinutesAsleep),
-    sleep_efficiency: numberOrNull(sleepSummary.efficiency),
-    weight_kg: numberOrNull(weightRow.weight),
-    body_fat_pct: numberOrNull(fatRow.fat),
-    raw: { activity, heart, sleep, weight, fat },
+    steps: roundOrNull(values.steps),
+    calories_out: roundOrNull(values.calories_out),
+    activity_calories: roundOrNull(values.calories_out),
+    active_minutes: roundOrNull(values.active_minutes),
+    active_zone_minutes: roundOrNull(values.active_zone_minutes),
+    resting_heart_rate: roundOrNull(values.resting_heart_rate),
+    sleep_minutes: null,
+    sleep_efficiency: null,
+    weight_kg: values.weight_kg,
+    body_fat_pct: values.body_fat_pct,
+    raw,
   }
 
   const { data, error } = await supabase
@@ -247,17 +274,17 @@ export async function syncFitbitDate(date: string, supabase = createServiceSupab
   await supabase
     .from('health_connections')
     .update({ last_sync_at: new Date().toISOString() })
-    .eq('provider', 'fitbit')
+    .eq('provider', PROVIDER)
 
   return data
 }
 
-export async function syncRecentFitbitDays(daysBack = 7) {
+export async function syncRecentHealthDays(daysBack = 7) {
   const supabase = createServiceSupabase()
   const dates = Array.from({ length: daysBack }, (_, index) => getPacificDate(-index))
   const results = []
   for (const date of dates) {
-    results.push(await syncFitbitDate(date, supabase))
+    results.push(await syncGoogleHealthDate(date, supabase))
   }
   return results.filter(Boolean)
 }
@@ -266,6 +293,7 @@ export async function getLatestHealthMetrics(limit = 14) {
   const { data, error } = await createServiceSupabase()
     .from('health_daily_metrics')
     .select('*')
+    .eq('provider', PROVIDER)
     .order('date', { ascending: false })
     .limit(limit)
     .returns<HealthDailyMetrics[]>()
@@ -278,6 +306,7 @@ export async function getHealthMetricsForDates(dates: string[]) {
   const { data, error } = await createServiceSupabase()
     .from('health_daily_metrics')
     .select('*')
+    .eq('provider', PROVIDER)
     .in('date', dates)
     .returns<HealthDailyMetrics[]>()
   if (error) {
@@ -303,32 +332,91 @@ export function compactHealthMetrics(metrics?: HealthDailyMetrics | null) {
   }
 }
 
-async function fitbitGet(accessToken: string, path: string) {
-  const response = await fetch(`${FITBIT_API_BASE}${path}`, {
-    headers: { authorization: `Bearer ${accessToken}` },
-  })
-  const data = await response.json()
-  if (!response.ok) {
-    throw new Error(`Fitbit API failed: ${response.status} ${path} ${JSON.stringify(data).slice(0, 300)}`)
-  }
-  return data as Record<string, unknown>
-}
-
-async function fitbitGetOptional(accessToken: string, path: string) {
+async function googleDailyRollupOptional(accessToken: string, dataType: string, date: string) {
   try {
-    return await fitbitGet(accessToken, path)
+    return await googleDailyRollup(accessToken, dataType, date)
   } catch (error) {
     console.error(error)
     return {}
   }
 }
 
+async function googleDailyRollup(accessToken: string, dataType: string, date: string) {
+  const response = await fetch(`${GOOGLE_HEALTH_API_BASE}/v4/users/me/dataTypes/${encodeURIComponent(dataType)}/dataPoints:dailyRollUp`, {
+    method: 'POST',
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      'content-type': 'application/json',
+    },
+    body: JSON.stringify({ civilDate: toCivilDate(date) }),
+  })
+  const data = await response.json()
+  if (!response.ok) {
+    throw new Error(`Google Health rollup failed: ${response.status} ${dataType} ${JSON.stringify(data).slice(0, 300)}`)
+  }
+  return data as Record<string, unknown>
+}
+
 function base64Url(buffer: Buffer) {
   return buffer.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '')
 }
 
+function toCivilDate(date: string) {
+  const [year, month, day] = date.split('-').map(Number)
+  return { year, month, day }
+}
+
 function asRecord(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {}
+}
+
+function getNumberAtPath(value: unknown, path: string[]): number | null {
+  let cursor: unknown = value
+  for (const key of path) {
+    if (Array.isArray(cursor)) cursor = cursor[0]
+    cursor = asRecord(cursor)[key]
+  }
+  return numberOrNull(cursor)
+}
+
+function firstNumberNearKey(value: unknown, targetKey: string): number | null {
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = firstNumberNearKey(item, targetKey)
+      if (found !== null) return found
+    }
+    return null
+  }
+  const record = asRecord(value)
+  if (!Object.keys(record).length) return null
+  const direct = numberOrNull(record[targetKey])
+  if (direct !== null) return direct
+  for (const [key, child] of Object.entries(record)) {
+    if (key.toLowerCase().includes(targetKey.toLowerCase())) {
+      const nested = firstPlainNumber(child)
+      if (nested !== null) return nested
+    }
+    const found = firstNumberNearKey(child, targetKey)
+    if (found !== null) return found
+  }
+  return null
+}
+
+function firstPlainNumber(value: unknown): number | null {
+  const number = numberOrNull(value)
+  if (number !== null) return number
+  if (Array.isArray(value)) {
+    for (const item of value) {
+      const found = firstPlainNumber(item)
+      if (found !== null) return found
+    }
+    return null
+  }
+  for (const child of Object.values(asRecord(value))) {
+    const found = firstPlainNumber(child)
+    if (found !== null) return found
+  }
+  return null
 }
 
 function numberOrNull(value: unknown) {
@@ -336,9 +424,8 @@ function numberOrNull(value: unknown) {
   return Number.isFinite(number) ? number : null
 }
 
-function sumNumbers(...values: Array<number | null>) {
-  const valid = values.filter((value): value is number => typeof value === 'number')
-  return valid.length ? valid.reduce((sum, value) => sum + value, 0) : null
+function roundOrNull(value: number | null | undefined) {
+  return typeof value === 'number' ? Math.round(value) : null
 }
 
 function getPacificDate(offsetDays = 0) {
