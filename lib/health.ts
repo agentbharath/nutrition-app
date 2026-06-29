@@ -93,23 +93,6 @@ const DAILY_ROLLUPS: Record<string, RollupSpec> = {
       numberOrNull(record.sumInFatBurnHeartZone)
     ),
   },
-  sleep_minutes: {
-    dataType: 'sleep',
-    rollupField: 'sleep',
-    valuePaths: [['sleepDurationMillisSum'], ['durationMillisSum'], ['sleepMinutesSum']],
-    combine: (record) => {
-      const minutes = firstNumberByKey(record, [/sleep.*minute/i, /minute.*sleep/i])
-      if (minutes !== null) return minutes
-      const millis = firstNumberByKey(record, [/sleep.*millis/i, /duration.*millis/i, /millis.*sleep/i])
-      return millis === null ? null : millis / 60000
-    },
-  },
-  sleep_efficiency: {
-    dataType: 'sleep',
-    rollupField: 'sleep',
-    valuePaths: [['sleepEfficiencyPercentageAvg'], ['efficiencyPercentageAvg'], ['sleepScoreAvg']],
-    combine: (record) => firstNumberByKey(record, [/efficiency/i, /sleep.*score/i]),
-  },
   resting_heart_rate: {
     dataType: 'daily-resting-heart-rate',
     rollupField: 'restingHeartRatePersonalRange',
@@ -279,22 +262,26 @@ export async function syncGoogleHealthDate(date: string, supabase = createServic
   const connection = await getValidGoogleHealthConnection(supabase)
   if (!connection) return null
 
-  const entries = await Promise.all(
-    Object.entries(DAILY_ROLLUPS).map(async ([key, spec]) => {
+  const [entries, sleep] = await Promise.all([
+    Promise.all(Object.entries(DAILY_ROLLUPS).map(async ([key, spec]) => {
       const rollup = await googleDailyRollupOptional(connection.access_token, spec.dataType, date)
       const value = extractRollupValue(rollup, spec)
       return [key, value, rollup] as const
-    })
-  )
+    })),
+    googleSleepForDateOptional(connection.access_token, date),
+  ])
 
   const values = Object.fromEntries(entries.map(([key, value]) => [key, value])) as Record<string, number | null>
-  const raw = Object.fromEntries(entries.map(([key, , rollup]) => [key, rollup]))
+  const raw = {
+    ...Object.fromEntries(entries.map(([key, , rollup]) => [key, rollup])),
+    sleep: sleep.raw,
+  } as Record<string, unknown>
   const activeByLevel = extractActiveMinutesByLevel(raw.active_minutes)
   const readiness = calculateReadinessScore({
     steps: roundOrNull(values.steps),
     activity_calories: roundOrNull(values.active_energy),
     active_minutes: roundOrNull(values.active_minutes),
-    sleep_minutes: roundOrNull(values.sleep_minutes),
+    sleep_minutes: roundOrNull(sleep.minutes),
   })
 
   const metrics: HealthDailyMetrics = {
@@ -309,8 +296,8 @@ export async function syncGoogleHealthDate(date: string, supabase = createServic
     active_minutes: roundOrNull(values.active_minutes),
     active_zone_minutes: roundOrNull(values.active_zone_minutes),
     resting_heart_rate: roundOrNull(values.resting_heart_rate),
-    sleep_minutes: roundOrNull(values.sleep_minutes),
-    sleep_efficiency: roundOrNull(values.sleep_efficiency),
+    sleep_minutes: roundOrNull(sleep.minutes),
+    sleep_efficiency: roundOrNull(sleep.efficiency),
     readiness_score: readiness.score,
     readiness_note: readiness.note,
     weight_kg: values.weight_kg,
@@ -405,6 +392,26 @@ async function googleDailyRollupOptional(accessToken: string, dataType: string, 
   }
 }
 
+async function googleSleepForDateOptional(accessToken: string, date: string) {
+  try {
+    const raw = await googleDataPointsList(accessToken, 'sleep', date)
+    return {
+      ...extractSleepSummary(raw),
+      raw,
+    }
+  } catch (error) {
+    console.error(error)
+    return {
+      minutes: null,
+      efficiency: null,
+      raw: {
+        error: error instanceof Error ? error.message : String(error),
+        dataType: 'sleep',
+      },
+    }
+  }
+}
+
 async function googleDailyRollup(accessToken: string, dataType: string, date: string) {
   const response = await fetch(`${GOOGLE_HEALTH_API_BASE}/v4/users/me/dataTypes/${encodeURIComponent(dataType)}/dataPoints:dailyRollUp`, {
     method: 'POST',
@@ -423,6 +430,43 @@ async function googleDailyRollup(accessToken: string, dataType: string, date: st
     throw new Error(`Google Health rollup failed: ${response.status} ${dataType} ${JSON.stringify(data).slice(0, 300)}`)
   }
   return data as Record<string, unknown>
+}
+
+async function googleDataPointsList(accessToken: string, dataType: string, date: string) {
+  const nextDate = getNextDateString(date)
+  const url = new URL(`${GOOGLE_HEALTH_API_BASE}/v4/users/me/dataTypes/${encodeURIComponent(dataType)}/dataPoints`)
+  url.searchParams.set('pageSize', '25')
+  url.searchParams.set('filter', `sleep.interval.civil_end_time >= "${date}" AND sleep.interval.civil_end_time < "${nextDate}"`)
+  const response = await fetch(url, {
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+    },
+  })
+  const data = await response.json()
+  if (!response.ok) {
+    throw new Error(`Google Health list failed: ${response.status} ${dataType} ${JSON.stringify(data).slice(0, 300)}`)
+  }
+  return data as Record<string, unknown>
+}
+
+function extractSleepSummary(raw: unknown) {
+  const points = Array.isArray(asRecord(raw).dataPoints) ? asRecord(raw).dataPoints as unknown[] : []
+  let minutesAsleep = 0
+  let minutesInSleepPeriod = 0
+
+  for (const point of points) {
+    const summary = asRecord(asRecord(asRecord(point).sleep).summary)
+    const asleep = numberOrNull(summary.minutesAsleep)
+    const inPeriod = numberOrNull(summary.minutesInSleepPeriod)
+    if (asleep !== null) minutesAsleep += asleep
+    if (inPeriod !== null) minutesInSleepPeriod += inPeriod
+  }
+
+  const minutes = minutesAsleep || null
+  const efficiency = minutesAsleep && minutesInSleepPeriod
+    ? Math.round((minutesAsleep / minutesInSleepPeriod) * 100)
+    : null
+  return { minutes, efficiency }
 }
 
 async function upsertHealthMetrics(supabase: SupabaseClient, metrics: HealthDailyMetrics) {
@@ -466,6 +510,12 @@ function toCivilDayRange(date: string) {
     start: { date: { year, month, day }, time: { hours: 0, minutes: 0, seconds: 0, nanos: 0 } },
     end: { date: { year: endYear, month: endMonth, day: endDay }, time: { hours: 0, minutes: 0, seconds: 0, nanos: 0 } },
   }
+}
+
+function getNextDateString(date: string) {
+  const next = new Date(`${date}T12:00:00.000Z`)
+  next.setUTCDate(next.getUTCDate() + 1)
+  return next.toISOString().slice(0, 10)
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -536,26 +586,6 @@ function sumNumbers(...values: Array<number | null>) {
 function averageNumbers(...values: Array<number | null>) {
   const valid = values.filter((value): value is number => typeof value === 'number')
   return valid.length ? valid.reduce((sum, value) => sum + value, 0) / valid.length : null
-}
-
-function firstNumberByKey(value: unknown, patterns: RegExp[]): number | null {
-  if (!value || typeof value !== 'object') return null
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const found = firstNumberByKey(item, patterns)
-      if (found !== null) return found
-    }
-    return null
-  }
-  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-    if (patterns.some((pattern) => pattern.test(key))) {
-      const number = numberOrNull(child)
-      if (number !== null) return number
-    }
-    const nested = firstNumberByKey(child, patterns)
-    if (nested !== null) return nested
-  }
-  return null
 }
 
 function roundOrNull(value: number | null | undefined) {

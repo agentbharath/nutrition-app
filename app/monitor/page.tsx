@@ -66,7 +66,7 @@ export default function MonitorPage() {
     ? selectedDate
     : weekRows[0]?.date || ''
   const selectedRow = weekRows.find((row) => row.date === activeDate)
-  const selectedAnalysis = weekAnalyses.find((analysis) => analysis.date === activeDate) || latestAnalysis
+  const selectedAnalysis = weekAnalyses.find((analysis) => analysis.date === activeDate) || null
   const selectedDailyAi = aiReports.find((report) => report.report_type === 'daily' && report.period_end === activeDate)
   const repeatedWatches = weekAnalyses.flatMap((analysis) => analysis.watch)
   const sodiumWatchCount = repeatedWatches.filter((item) => item.toLowerCase().includes('sodium')).length
@@ -94,7 +94,7 @@ export default function MonitorPage() {
         </div>
       ) : latestAnalysis ? (
         <div className="px-4 space-y-3">
-          {weekAnalyses.length > 0 && selectedRow && selectedAnalysis && (
+          {weekRows.length > 0 && selectedRow && (
             <section className="t-card rounded-2xl p-4 space-y-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
@@ -142,7 +142,7 @@ export default function MonitorPage() {
                   </div>
                   <p className="text-xs font-semibold t-accent text-right">{selectedRow.intake !== null ? `${selectedRow.intake} cal` : 'No food'}</p>
                 </div>
-                <p className="text-sm t-muted mt-2">{selectedRow.headline || selectedAnalysis.headline}</p>
+                <p className="text-sm t-muted mt-2">{selectedRow.headline || 'No nutrition logged for this day. Health data is still shown below.'}</p>
 
                 <div className="mt-4 space-y-3">
                   <div>
@@ -216,8 +216,8 @@ export default function MonitorPage() {
                   <span className="text-xs t-muted">Open</span>
                 </summary>
                 <div className="mt-3 space-y-3">
-                  {selectedAnalysis.eaten.length === 0 ? (
-                    <p className="text-sm t-muted">No eaten meals were confirmed for this day.</p>
+                  {!selectedAnalysis || selectedAnalysis.eaten.length === 0 ? (
+                    <p className="text-sm t-muted">No food was logged for this date.</p>
                   ) : (
                     <div className="space-y-2">
                       {selectedAnalysis.eaten.map((entry, index) => (
@@ -240,19 +240,19 @@ export default function MonitorPage() {
                   <div className="grid grid-cols-1 gap-2">
                     <div>
                       <p className="text-xs t-muted uppercase tracking-wider mb-1">Good signals</p>
-                      {(selectedAnalysis.positives.length ? selectedAnalysis.positives : ['No strong positives yet.']).map((item) => (
+                      {(selectedAnalysis?.positives.length ? selectedAnalysis.positives : ['No nutrition analysis for this date.']).map((item) => (
                         <p key={item} className="text-sm t-text">✓ {item}</p>
                       ))}
                     </div>
                     <div>
                       <p className="text-xs t-muted uppercase tracking-wider mb-1">Watch</p>
-                      {(selectedAnalysis.watch.length ? selectedAnalysis.watch : ['No major issues from what was eaten.']).map((item) => (
+                      {(selectedAnalysis?.watch.length ? selectedAnalysis.watch : ['No food issues because no food was logged.']).map((item) => (
                         <p key={item} className="text-sm t-text">• {item}</p>
                       ))}
                     </div>
                     <div>
                       <p className="text-xs t-muted uppercase tracking-wider mb-1">Next move</p>
-                      {(selectedAnalysis.suggestions.length ? selectedAnalysis.suggestions : ['Keep the same pattern unless hunger or training changes.']).map((item) => (
+                      {(selectedAnalysis?.suggestions.length ? selectedAnalysis.suggestions : ['Backfill the day if you ate but did not log it.']).map((item) => (
                         <p key={item} className="text-sm t-text">→ {item}</p>
                       ))}
                     </div>
