@@ -141,8 +141,8 @@ export function searchIngredients(query: string) {
 
 // Fetch from USDA and convert to IngredientNutrition format
 export async function searchUSDAIngredients(query: string): Promise<IngredientNutrition[]> {
-  const apiKey = process.env.NEXT_PUBLIC_USDA_API_KEY
-  if (!apiKey || query.trim().length < 2) return []
+  const apiKey = process.env.NEXT_PUBLIC_USDA_API_KEY || 'DEMO_KEY'
+  if (query.trim().length < 2) return []
 
   try {
     const params = new URLSearchParams({

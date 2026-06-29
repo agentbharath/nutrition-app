@@ -453,9 +453,12 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
                 <div className="mt-2 max-h-44 overflow-y-auto space-y-1.5">
                   {searchLoading && (
                     <div className="flex items-center gap-2 px-3 py-2">
-                      <div className="w-3 h-3 border border-t-transparent rounded-full animate-spin t-accent" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
-                      <span className="text-xs t-muted">Searching USDA database...</span>
+                      <div className="w-3 h-3 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
+                      <span className="text-xs t-muted">Searching USDA database for "{recipeQuery}"...</span>
                     </div>
+                  )}
+                  {!searchLoading && recipeResults.length === 0 && recipeQuery.trim().length > 0 && (
+                    <p className="text-xs t-muted px-3 py-2">No results found. Try a different spelling or add custom below.</p>
                   )}
                   {recipeResults.map((ingredient) => (
                     <button
