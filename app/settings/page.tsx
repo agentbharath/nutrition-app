@@ -49,7 +49,8 @@ export default function SettingsPage() {
   useEffect(() => {
     void Promise.resolve().then(async () => {
       if (!('Notification' in window)) { setNotifStatus('unsupported'); return }
-      setNotifStatus(Notification.permission as 'granted'|'denied')
+      const perm = Notification.permission
+      setNotifStatus(perm === 'default' ? 'unknown' : perm as 'granted'|'denied')
       if ('serviceWorker' in navigator) {
         const r = await navigator.serviceWorker.ready
         const s = await r.pushManager.getSubscription()
