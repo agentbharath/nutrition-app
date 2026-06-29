@@ -24,12 +24,18 @@ interface ClaudeResponse {
 const CLAUDE_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250929'
 
 const USER_GOAL_PROFILE = {
-  primary_goal: 'Reduce belly and visceral fat while preserving or increasing lean muscle.',
+  primary_goal: 'Reduce belly and visceral fat while preserving all lean muscle on a structured 4.5 month fat-loss protocol.',
+  target_outcome: {
+    target_weight_kg: 69,
+    target_body_fat_percentage: 15,
+    emphasis: 'Waist, belly fat, and visceral fat reduction without sacrificing muscle mass or training performance.',
+  },
   coaching_lens: [
     'Favor a sustainable calorie deficit, not crash dieting.',
     'Protect muscle with high protein, consistent strength training support, and enough gym-day carbs.',
     'Treat sodium spikes as water-retention risk and scale-noise, not fat gain.',
     'Prioritize fiber, minimally processed foods, and consistent meal quality for satiety and waist reduction.',
+    'Judge Sunday fasting as an intentional weekly deficit lever, not as accidental under-eating.',
   ],
   body_snapshot: {
     date: '2026-06-19',
@@ -44,12 +50,57 @@ const USER_GOAL_PROFILE = {
     visceral_fat_index: 7,
     subcutaneous_fat_percentage: 17.8,
     bmr_kcal: 1593,
+    trend_note: 'Down from 74.70kg and about 21% body fat roughly 3 weeks earlier; protocol is already working.',
+  },
+  daily_targets: {
+    calories_kcal: 1800,
+    protein_g_min: 140,
+    sodium_mg_max: 1500,
+    fiber_g_min: 25,
+  },
+  fixed_breakfast: {
+    name: 'Breakfast bowl',
+    foods: ['Fage 0% Greek yogurt', 'chia seeds', 'flaxseeds', 'almonds', 'pumpkin seeds', 'blueberries'],
+    macros: { calories_kcal: 497, protein_g: 51 },
+    note: 'Every day starts with this bowl unless the log explicitly says otherwise.',
+  },
+  meal_rotation: [
+    'WFH tuna masala template',
+    'Avocado toast on Ezekiel zero-sodium bread',
+    'Soya stir fry',
+    'Chana dal',
+    'Strict Chipotle bowl: no salsa, no cheese, ever',
+    'Office salad followed by salmon rice bowl at home',
+  ],
+  gym_day_rules: {
+    training_split: 'Push/Pull/Lower/Full Body, 4 days per week',
+    walking: '22 minutes each way to the gym',
+    lunch_adjustment: 'Add half cup rice to lunch on gym days',
+    post_workout: 'Drink Vita Coco 500ml immediately after training for potassium, then Fairlife 42g shake',
+    dinner_adjustment: 'Skip peanut butter at dinner to balance added gym-day calories',
+  },
+  sunday_fast: {
+    intent: 'Intentional weekly deficit without starving daily',
+    foods: ['Fairlife', 'water', 'green tea', 'fruit only'],
+    approximate_calories_kcal: 330,
+  },
+  supplements: {
+    morning: ['D3+K2 with breakfast'],
+    night: ['magnesium glycinate', 'ashwagandha'],
+    purpose: 'Sleep and recovery support',
+  },
+  boundaries: {
+    sodium: 'No added salt anywhere.',
+    processed_food: 'Avoid processed food.',
+    restaurants: 'No restaurants except controlled Chipotle.',
   },
   interpretation_rules: [
     'Praise days that preserve muscle: protein near or above target, reasonable calories, and gym-day recovery carbs.',
     'Flag days that may hurt muscle retention: low protein, very low calories on training days, or repeated missed meals.',
     'Flag belly-fat goal risks: repeated calorie surplus, low fiber, high-sodium packaged foods, and poor satiety setup.',
     'For weekly progress, focus on trend behavior: consistency, waist/fat-loss support, sodium-water noise, and muscle-preservation habits.',
+    'For daily reports, evaluate that day independently first, then mention whether it helps the weekly protocol.',
+    'For weekly reports, give progressive tracking across the seven separated days: which days helped, which days were noisy, and what to adjust next week.',
   ],
 }
 
@@ -154,6 +205,7 @@ export async function generateDailyClaudeReport(analysis: FoodAnalysis, previous
     'Limits: summary <= 45 words; each array <= 3 short strings.',
     'If previous weekly focus goals are present, mention whether today helped or hurt them.',
     'Use health metrics as activity, sleep, recovery, and body trend context. Do not subtract calories_out from food calories.',
+    'Use the user goal profile as the coaching frame for belly/visceral fat loss and muscle preservation.',
     JSON.stringify({
       user_goal_profile: USER_GOAL_PROFILE,
       daily_log: compactAnalysis(analysis),
@@ -181,11 +233,11 @@ export async function generateWeeklyClaudeReport(
     `${analyses.length} days analyzed. Review repeated sodium, protein, and fiber patterns.`,
   )
   const prompt = [
-    'Create a progressive weekly nutrition analysis from these 7 compact daily logs.',
+    'Create a progressive weekly nutrition analysis from these separated daily logs.',
     'Compare against the previous weekly report when present.',
     'Return JSON with keys: title, summary, positives, watch, progress, focus_goals, next_actions.',
     'Limits: summary <= 55 words; each array <= 3 short strings.',
-    'Focus on repeated food patterns, not generic advice.',
+    'Focus on repeated food patterns, specific day-to-day differences, and whether the week supported belly/visceral fat loss while preserving muscle.',
     'Use health metrics to connect food choices with activity, sleep, recovery, and body trend. Do not subtract calories_out from food calories.',
     JSON.stringify({
       user_goal_profile: USER_GOAL_PROFILE,
