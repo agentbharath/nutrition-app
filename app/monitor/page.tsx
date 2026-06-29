@@ -26,7 +26,7 @@ interface DailyReportRow {
   carbs: number | null
   burned: number | null
   steps: number | null
-  sleepHours: number | null
+  sleepMinutes: number | null
   activeMinutes: number | null
   cardioLoad: number | null
 }
@@ -181,8 +181,8 @@ export default function MonitorPage() {
                       {[
                         ['Steps', selectedRow.steps !== null ? selectedRow.steps.toLocaleString() : '-'],
                         ['Burn', selectedRow.burned !== null ? selectedRow.burned : '-'],
-                        ['Sleep', selectedRow.sleepHours !== null ? `${selectedRow.sleepHours}h` : '-'],
-                        ['Active', selectedRow.activeMinutes !== null ? `${selectedRow.activeMinutes}m` : '-'],
+                        ['Sleep', formatDuration(selectedRow.sleepMinutes)],
+                        ['Active', formatDuration(selectedRow.activeMinutes)],
                         ['Cardio', selectedRow.cardioLoad !== null ? selectedRow.cardioLoad : '-'],
                       ].map(([label, value]) => (
                         <div key={label} className="rounded-lg p-1.5 text-center macro-pill">
@@ -350,13 +350,18 @@ function buildHealthFoodRows(dates: string[], health: HealthDailyMetrics[], anal
       carbs: analysis ? Math.round(analysis.totals.carbs) : null,
       burned: metrics?.calories_out || null,
       steps: metrics?.steps || null,
-      sleepHours: typeof metrics?.sleep_minutes === 'number'
-        ? Math.round((metrics.sleep_minutes / 60) * 10) / 10
-        : null,
+      sleepMinutes: metrics?.sleep_minutes || null,
       activeMinutes: metrics?.active_minutes || null,
       cardioLoad: metrics?.cardio_load || null,
     }
   })
+}
+
+function formatDuration(minutes: number | null) {
+  if (minutes === null) return '-'
+  const hours = Math.floor(minutes / 60)
+  const mins = minutes % 60
+  return `${String(hours).padStart(2, '0')}h ${String(mins).padStart(2, '0')}m`
 }
 
 function getLastPacificDates(count: number) {
