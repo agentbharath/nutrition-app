@@ -14,7 +14,21 @@ interface HealthStatus {
   last_sync_at?: string | null
   connected_at?: string | null
   latest?: HealthDailyMetrics[]
+  diagnostics?: {
+    expected_dates?: string[]
+    stored_dates?: string[]
+    missing_dates?: string[]
+  }
   message?: string
+  error?: string
+}
+
+interface HealthSyncResult {
+  synced?: number
+  failed?: number
+  days?: number
+  dates?: string[]
+  errors?: Array<{ date?: string; error?: string }>
   error?: string
 }
 
@@ -30,6 +44,7 @@ export default function SettingsPage() {
   const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null)
   const [healthLoading, setHealthLoading] = useState(true)
   const [healthSyncing, setHealthSyncing] = useState(false)
+  const [healthSyncResult, setHealthSyncResult] = useState<HealthSyncResult | null>(null)
 
   useEffect(() => {
     void Promise.resolve().then(async () => {
@@ -123,15 +138,19 @@ export default function SettingsPage() {
 
   async function syncHealthNow() {
     setHealthSyncing(true)
+    setHealthSyncResult(null)
     try {
-      await fetch('/api/health/sync', {
+      const res = await fetch('/api/health/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ days: 7 }),
+        body: JSON.stringify({ days: 8 }),
       })
+      const data = await res.json()
+      setHealthSyncResult(res.ok ? data : { error: data.error || 'Health sync failed.' })
       await loadHealthStatus()
     } catch (error) {
       console.error(error)
+      setHealthSyncResult({ error: 'Health sync failed.' })
     } finally {
       setHealthSyncing(false)
     }
@@ -266,6 +285,11 @@ export default function SettingsPage() {
                   {healthWeek.length} synced day{healthWeek.length === 1 ? '' : 's'} available for Analysis.
                 </p>
               )}
+              {healthStatus.diagnostics?.missing_dates?.length ? (
+                <p className="text-[11px] t-muted">
+                  Missing health rows: {healthStatus.diagnostics.missing_dates.join(', ')}
+                </p>
+              ) : null}
               {latestHealth && !healthNeedsReconnect && !hasAnyHealthValue && (
                 <p className="text-[11px] t-muted">Connected, but Google Health did not return activity/body values for the latest synced days.</p>
               )}
@@ -291,6 +315,28 @@ export default function SettingsPage() {
                   Disconnect
                 </button>
               </div>
+              {healthSyncResult && (
+                <div className="rounded-xl p-3 text-[11px]" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+                  {healthSyncResult.error ? (
+                    <p style={{ color: 'var(--red)' }}>{healthSyncResult.error}</p>
+                  ) : (
+                    <div className="space-y-1 t-muted">
+                      <p>
+                        Sync result: {healthSyncResult.synced || 0}/{healthSyncResult.days || 0} synced
+                        {healthSyncResult.failed ? ` • ${healthSyncResult.failed} failed` : ''}
+                      </p>
+                      {Boolean(healthSyncResult.dates?.length) && (
+                        <p>Dates: {healthSyncResult.dates?.join(', ')}</p>
+                      )}
+                      {Boolean(healthSyncResult.errors?.length) && (
+                        <p style={{ color: 'var(--red)' }}>
+                          Errors: {healthSyncResult.errors?.map((item) => `${item.date || 'date'} ${item.error || 'failed'}`).join(' | ')}
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <a
