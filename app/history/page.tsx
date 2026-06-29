@@ -127,13 +127,16 @@ export default function HistoryPage() {
 
       <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto t-bg border-t t-border flex">
         <Link href="/" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
-          <span className="text-lg">📋</span><span className="text-xs">Today</span>
+          <span className="text-lg">📋</span><span className="text-[11px]">Today</span>
         </Link>
         <button className="flex-1 py-4 t-accent flex flex-col items-center gap-1">
-          <span className="text-lg">📅</span><span className="text-xs font-medium">History</span>
+          <span className="text-lg">📅</span><span className="text-[11px] font-medium">History</span>
         </button>
+        <Link href="/monitor" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
+          <span className="text-lg">📈</span><span className="text-[11px]">Monitor</span>
+        </Link>
         <Link href="/settings" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
-          <span className="text-lg">⚙️</span><span className="text-xs">Settings</span>
+          <span className="text-lg">⚙️</span><span className="text-[11px]">Settings</span>
         </Link>
       </nav>
     </main>

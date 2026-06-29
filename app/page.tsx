@@ -466,13 +466,16 @@ export default function Home() {
 
       <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bottom-nav border-t t-border flex">
         <button className="flex-1 py-4 t-accent flex flex-col items-center gap-1">
-          <span className="text-lg">📋</span><span className="text-xs font-semibold">Today</span>
+          <span className="text-lg">📋</span><span className="text-[11px] font-semibold">Today</span>
         </button>
         <Link href="/history" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
-          <span className="text-lg">📅</span><span className="text-xs">History</span>
+          <span className="text-lg">📅</span><span className="text-[11px]">History</span>
+        </Link>
+        <Link href="/monitor" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
+          <span className="text-lg">📈</span><span className="text-[11px]">Monitor</span>
         </Link>
         <Link href="/settings" className="flex-1 py-4 t-muted flex flex-col items-center gap-1 hover:t-text transition-colors">
-          <span className="text-lg">⚙️</span><span className="text-xs">Settings</span>
+          <span className="text-lg">⚙️</span><span className="text-[11px]">Settings</span>
         </Link>
       </nav>
 

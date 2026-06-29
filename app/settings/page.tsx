@@ -247,13 +247,16 @@ export default function SettingsPage() {
 
       <nav className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bottom-nav flex">
         <Link href="/" className="flex-1 py-4 flex flex-col items-center gap-1 t-muted hover:opacity-80 transition-opacity">
-          <span className="text-lg">📋</span><span className="text-xs">Today</span>
+          <span className="text-lg">📋</span><span className="text-[11px]">Today</span>
         </Link>
         <Link href="/history" className="flex-1 py-4 flex flex-col items-center gap-1 t-muted hover:opacity-80 transition-opacity">
-          <span className="text-lg">📅</span><span className="text-xs">History</span>
+          <span className="text-lg">📅</span><span className="text-[11px]">History</span>
+        </Link>
+        <Link href="/monitor" className="flex-1 py-4 flex flex-col items-center gap-1 t-muted hover:opacity-80 transition-opacity">
+          <span className="text-lg">📈</span><span className="text-[11px]">Monitor</span>
         </Link>
         <button className="flex-1 py-4 flex flex-col items-center gap-1 t-accent">
-          <span className="text-lg">⚙️</span><span className="text-xs font-semibold">Settings</span>
+          <span className="text-lg">⚙️</span><span className="text-[11px] font-semibold">Settings</span>
         </button>
       </nav>
     </main>
