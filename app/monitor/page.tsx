@@ -183,7 +183,7 @@ export default function MonitorPage() {
                         ['Burn', selectedRow.burned !== null ? selectedRow.burned : '-'],
                         ['Sleep', formatDuration(selectedRow.sleepMinutes)],
                         ['Active', formatDuration(selectedRow.activeMinutes)],
-                        ['Cardio', selectedRow.cardioLoad !== null ? selectedRow.cardioLoad : '-'],
+                        ['Strain', selectedRow.cardioLoad !== null ? selectedRow.cardioLoad : '-'],
                       ].map(([label, value]) => (
                         <div key={label} className="rounded-lg p-1.5 text-center macro-pill">
                           <p className="text-[10px] font-bold t-text leading-tight">{value}</p>
