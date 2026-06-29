@@ -16,6 +16,22 @@ interface AiReportRow {
   analysis: ClaudeNutritionReport
 }
 
+interface DailyReportRow {
+  date: string
+  headline: string | null
+  intake: number | null
+  protein: number | null
+  sodium: number | null
+  fiber: number | null
+  carbs: number | null
+  burned: number | null
+  steps: number | null
+  sleepHours: number | null
+  sleepScore: number | null
+  readiness: number | null
+  readinessNote: string | null
+}
+
 export default function MonitorPage() {
   const [logs, setLogs] = useState<DailyLog[]>([])
   const [quickAdds, setQuickAdds] = useState<QuickAddEntry[]>([])
@@ -53,14 +69,11 @@ export default function MonitorPage() {
   const score = last7.length
     ? weeklyScore(last7)
     : 0
-  const selectedLog = logs[0]
-  const latestAnalysis = selectedLog
-    ? analyzeFoodDay(selectedLog, quickAdds.filter((item) => item.date === selectedLog.date))
-    : null
+  const calendarDates = useMemo(() => getLastPacificDates(7), [])
   const latestWeeklyAi = aiReports.find((report) => report.report_type === 'weekly')
   const weekAnalyses = logs.slice(0, 7).map((log) => analyzeFoodDay(log, quickAdds.filter((item) => item.date === log.date)))
   const weekHealth = healthMetrics.slice(0, 7)
-  const weekRows = buildHealthFoodRows(weekHealth, weekAnalyses)
+  const weekRows = buildHealthFoodRows(calendarDates, weekHealth, weekAnalyses)
   const [selectedDate, setSelectedDate] = useState('')
   const activeDate = selectedDate && weekRows.some((row) => row.date === selectedDate)
     ? selectedDate
@@ -87,12 +100,12 @@ export default function MonitorPage() {
         <div className="flex items-center justify-center py-20">
           <div className="w-8 h-8 border-2 border-t-transparent rounded-full animate-spin" style={{ borderColor: 'var(--accent)', borderTopColor: 'transparent' }} />
         </div>
-      ) : days.length === 0 ? (
+      ) : days.length === 0 && healthMetrics.length === 0 ? (
         <div className="text-center py-20 px-4">
           <ChartIcon size={44} className="mx-auto mb-3 t-muted" />
           <p className="t-muted text-sm">No logs yet. Track a few days and this page will light up.</p>
         </div>
-      ) : latestAnalysis ? (
+      ) : (
         <div className="px-4 space-y-3">
           {weekRows.length > 0 && selectedRow && (
             <section className="t-card rounded-2xl p-4 space-y-4">
@@ -317,8 +330,6 @@ export default function MonitorPage() {
           )}
 
         </div>
-      ) : (
-        null
       )}
 
       <BottomNav active="analysis" />
@@ -326,32 +337,20 @@ export default function MonitorPage() {
   )
 }
 
-function buildHealthFoodRows(health: HealthDailyMetrics[], analyses: ReturnType<typeof analyzeFoodDay>[]) {
+function buildHealthFoodRows(dates: string[], health: HealthDailyMetrics[], analyses: ReturnType<typeof analyzeFoodDay>[]) {
   const healthByDate = new Map(health.map((item) => [item.date, item]))
-  const rows: Array<{
-    date: string
-    headline: string | null
-    intake: number | null
-    protein: number | null
-    sodium: number | null
-    fiber: number | null
-    carbs: number | null
-    burned: number | null
-    steps: number | null
-    sleepHours: number | null
-    sleepScore: number | null
-    readiness: number | null
-    readinessNote: string | null
-  }> = analyses.map((analysis) => {
-    const metrics = healthByDate.get(analysis.date)
+  const analysisByDate = new Map(analyses.map((item) => [item.date, item]))
+  return dates.map<DailyReportRow>((date) => {
+    const analysis = analysisByDate.get(date)
+    const metrics = healthByDate.get(date)
     return {
-      date: analysis.date,
-      headline: analysis.headline,
-      intake: Math.round(analysis.totals.cal),
-      protein: Math.round(analysis.totals.protein),
-      sodium: Math.round(analysis.totals.sodium),
-      fiber: Math.round(analysis.totals.fiber),
-      carbs: Math.round(analysis.totals.carbs),
+      date,
+      headline: analysis?.headline || null,
+      intake: analysis ? Math.round(analysis.totals.cal) : null,
+      protein: analysis ? Math.round(analysis.totals.protein) : null,
+      sodium: analysis ? Math.round(analysis.totals.sodium) : null,
+      fiber: analysis ? Math.round(analysis.totals.fiber) : null,
+      carbs: analysis ? Math.round(analysis.totals.carbs) : null,
       burned: metrics?.calories_out || null,
       steps: metrics?.steps || null,
       sleepHours: typeof metrics?.sleep_minutes === 'number'
@@ -362,28 +361,12 @@ function buildHealthFoodRows(health: HealthDailyMetrics[], analyses: ReturnType<
       readinessNote: metrics?.readiness_note || null,
     }
   })
-  const analysisDates = new Set(rows.map((row) => row.date))
-  health.forEach((metrics) => {
-    if (analysisDates.has(metrics.date)) return
-    rows.push({
-      date: metrics.date,
-      headline: null,
-      intake: null,
-      protein: null,
-      sodium: null,
-      fiber: null,
-      carbs: null,
-      burned: metrics.calories_out || null,
-      steps: metrics.steps || null,
-      sleepHours: typeof metrics.sleep_minutes === 'number'
-        ? Math.round((metrics.sleep_minutes / 60) * 10) / 10
-        : null,
-      sleepScore: metrics.sleep_efficiency || null,
-      readiness: metrics.readiness_score || null,
-      readinessNote: metrics.readiness_note || null,
-    })
+}
+
+function getLastPacificDates(count: number) {
+  return Array.from({ length: count }, (_, index) => {
+    const date = new Date()
+    date.setDate(date.getDate() - index)
+    return date.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
   })
-  return rows
-    .sort((a, b) => b.date.localeCompare(a.date))
-    .slice(0, 7)
 }
