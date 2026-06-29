@@ -451,7 +451,7 @@ async function googleDataPointsList(accessToken: string, dataType: string) {
 function extractSleepSummary(raw: unknown, date: string) {
   const points = Array.isArray(asRecord(raw).dataPoints) ? asRecord(raw).dataPoints as unknown[] : []
   const matchingPoints = points.filter((point) => getSleepCivilEndDate(point) === date)
-  const scopedPoints = matchingPoints.length > 0 ? matchingPoints : points.length === 1 ? points : []
+  const scopedPoints = matchingPoints
   let minutesAsleep = 0
   let minutesInSleepPeriod = 0
 
@@ -461,6 +461,12 @@ function extractSleepSummary(raw: unknown, date: string) {
     const inPeriod = numberOrNull(summary.minutesInSleepPeriod)
     if (asleep !== null) minutesAsleep += asleep
     if (inPeriod !== null) minutesInSleepPeriod += inPeriod
+
+    if (asleep === null && inPeriod === null) {
+      const stageSummary = extractSleepStageSummary(point)
+      minutesAsleep += stageSummary.minutesAsleep
+      minutesInSleepPeriod += stageSummary.minutesInSleepPeriod
+    }
   }
 
   const minutes = minutesAsleep || null
@@ -479,8 +485,64 @@ function getSleepCivilEndDate(point: unknown) {
   const year = numberOrNull(date.year)
   const month = numberOrNull(date.month)
   const day = numberOrNull(date.day)
-  if (year === null || month === null || day === null) return null
-  return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  if (year !== null && month !== null && day !== null) {
+    return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  }
+
+  const stages = asSleepStages(point)
+  const endTimes = stages.map((stage) => stage.endTime).filter((time): time is string => Boolean(time))
+  if (!endTimes.length) return null
+  const latestEndTime = endTimes.sort().at(-1)
+  return latestEndTime ? getPacificDateFromIso(latestEndTime) : null
+}
+
+function extractSleepStageSummary(point: unknown) {
+  const stages = asSleepStages(point)
+  let minutesAsleep = 0
+  let minutesInSleepPeriod = 0
+
+  for (const stage of stages) {
+    const duration = minutesBetween(stage.startTime, stage.endTime)
+    if (duration === null) continue
+    minutesInSleepPeriod += duration
+    if (stage.type !== 'AWAKE') minutesAsleep += duration
+  }
+
+  return { minutesAsleep, minutesInSleepPeriod }
+}
+
+function asSleepStages(point: unknown) {
+  const stages = asRecord(asRecord(point).sleep).stages
+  if (!Array.isArray(stages)) return []
+  return stages.map((stage) => {
+    const record = asRecord(stage)
+    return {
+      type: String(record.type || '').toUpperCase(),
+      startTime: typeof record.startTime === 'string' ? record.startTime : null,
+      endTime: typeof record.endTime === 'string' ? record.endTime : null,
+    }
+  })
+}
+
+function minutesBetween(startTime: string | null, endTime: string | null) {
+  if (!startTime || !endTime) return null
+  const start = new Date(startTime).getTime()
+  const end = new Date(endTime).getTime()
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) return null
+  return Math.round((end - start) / 60000)
+}
+
+function getPacificDateFromIso(value: string) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Los_Angeles',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date(value))
+  const year = parts.find((part) => part.type === 'year')?.value
+  const month = parts.find((part) => part.type === 'month')?.value
+  const day = parts.find((part) => part.type === 'day')?.value
+  return year && month && day ? `${year}-${month}-${day}` : null
 }
 
 async function upsertHealthMetrics(supabase: SupabaseClient, metrics: HealthDailyMetrics) {
