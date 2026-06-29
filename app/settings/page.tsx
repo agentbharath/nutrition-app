@@ -151,7 +151,6 @@ export default function SettingsPage() {
 
   const latestHealth = healthStatus?.latest?.[0]
   const healthWeek = healthStatus?.latest?.slice(0, 7) || []
-  const healthWeekSummary = summarizeHealthWeek(healthWeek)
   const healthNeedsReconnect = hasHealthScopeError(latestHealth)
   const hasAnyHealthValue = Boolean(latestHealth && [
     latestHealth.steps,
@@ -262,28 +261,9 @@ export default function SettingsPage() {
                   <p className="text-xs t-muted mt-1">Google denied the current token because it was granted before the new Health scopes. Disconnect, connect again, then sync.</p>
                 </div>
               )}
-              {healthWeek.length > 0 && (
-                <div className="grid grid-cols-4 gap-1.5">
-                  {[
-                    ['Steps', healthWeekSummary.avgSteps ? healthWeekSummary.avgSteps.toLocaleString() : '-'],
-                    ['Burn/day', healthWeekSummary.avgBurn ? `${healthWeekSummary.avgBurn}` : '-'],
-                    ['Move/day', healthWeekSummary.avgMove ? `${healthWeekSummary.avgMove}` : '-'],
-                    ['Active/day', healthWeekSummary.avgActive ? `${healthWeekSummary.avgActive}m` : '-'],
-                  ].map(([label, value]) => (
-                    <div key={label} className="macro-pill rounded-xl p-2 text-center">
-                      <p className="text-xs font-bold t-text">{value}</p>
-                      <p className="text-[10px] t-muted">{label}</p>
-                    </div>
-                  ))}
-                </div>
-              )}
               {latestHealth && hasAnyHealthValue && (
                 <p className="text-[11px] t-muted">
-                  {[
-                    `${healthWeekSummary.days} synced days`,
-                    healthWeekSummary.totalMove ? `${healthWeekSummary.totalMove} active cal total` : null,
-                    healthWeekSummary.avgSleep ? `${healthWeekSummary.avgSleep}h avg sleep` : null,
-                  ].filter(Boolean).join(' • ')}
+                  {healthWeek.length} synced day{healthWeek.length === 1 ? '' : 's'} available for Analysis.
                 </p>
               )}
               {latestHealth && !healthNeedsReconnect && !hasAnyHealthValue && (
@@ -440,25 +420,6 @@ function hasHealthScopeError(metrics?: HealthDailyMetrics) {
     const error = (value as { error?: unknown }).error
     return typeof error === 'string' && error.includes('ACCESS_TOKEN_SCOPE_INSUFFICIENT')
   })
-}
-
-function summarizeHealthWeek(items: HealthDailyMetrics[]) {
-  const avg = (values: Array<number | null | undefined>) => {
-    const valid = values.filter((value): value is number => typeof value === 'number')
-    if (valid.length === 0) return null
-    return Math.round(valid.reduce((sum, value) => sum + value, 0) / valid.length)
-  }
-  const sum = (values: Array<number | null | undefined>) => values.reduce<number>((total, value) => total + (typeof value === 'number' ? value : 0), 0)
-  const avgSleepMinutes = avg(items.map((item) => item.sleep_minutes))
-  return {
-    days: items.length,
-    avgSteps: avg(items.map((item) => item.steps)),
-    avgBurn: avg(items.map((item) => item.calories_out)),
-    avgMove: avg(items.map((item) => item.activity_calories)),
-    avgActive: avg(items.map((item) => item.active_minutes)),
-    avgSleep: avgSleepMinutes ? Math.round((avgSleepMinutes / 60) * 10) / 10 : null,
-    totalMove: Math.round(sum(items.map((item) => item.activity_calories))),
-  }
 }
 
 function urlBase64ToUint8Array(b: string) {

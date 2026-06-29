@@ -64,6 +64,7 @@ export default function MonitorPage() {
   const weekAnalyses = logs.slice(0, 7).map((log) => analyzeFoodDay(log, quickAdds.filter((item) => item.date === log.date)))
   const weekHealth = healthMetrics.slice(0, 7)
   const weekHealthSummary = summarizeHealthAndFoodWeek(weekHealth, weekAnalyses)
+  const weekRows = buildHealthFoodRows(weekHealth, weekAnalyses)
   const repeatedWatches = weekAnalyses.flatMap((analysis) => analysis.watch)
   const sodiumWatchCount = repeatedWatches.filter((item) => item.toLowerCase().includes('sodium')).length
   const proteinWatchCount = repeatedWatches.filter((item) => item.toLowerCase().includes('protein')).length
@@ -128,21 +129,24 @@ export default function MonitorPage() {
             </div>
           </section>
 
-          {weekHealth.length > 0 && (
+          {weekAnalyses.length > 0 && (
             <section className="t-card rounded-2xl p-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs t-muted uppercase tracking-wider">7-day nutrition + activity</p>
-                  <h2 className="text-lg font-bold t-text mt-1">{weekHealthSummary.days} synced health days</h2>
+                  <p className="text-xs t-muted uppercase tracking-wider">Last 7 days</p>
+                  <h2 className="text-lg font-bold t-text mt-1">Nutrition + health analysis</h2>
                 </div>
-                <p className="text-xs t-muted text-right">Google Health</p>
+                <p className="text-xs t-muted text-right">
+                  {weekHealthSummary.healthDays} health day{weekHealthSummary.healthDays === 1 ? '' : 's'}
+                </p>
               </div>
-              <div className="grid grid-cols-4 gap-1.5 mt-4">
+              <div className="grid grid-cols-5 gap-1.5 mt-4">
                 {[
+                  ['Steps', weekHealthSummary.avgSteps ? shortNumber(weekHealthSummary.avgSteps) : '-'],
                   ['Intake', weekHealthSummary.avgIntake ? `${weekHealthSummary.avgIntake}` : '-'],
-                  ['Burn', weekHealthSummary.avgBurn ? `${weekHealthSummary.avgBurn}` : '-'],
-                  ['Move', weekHealthSummary.avgMove ? `${weekHealthSummary.avgMove}` : '-'],
-                  ['Steps', weekHealthSummary.avgSteps ? weekHealthSummary.avgSteps.toLocaleString() : '-'],
+                  ['Burned', weekHealthSummary.avgBurn ? `${weekHealthSummary.avgBurn}` : '-'],
+                  ['Sleep', weekHealthSummary.avgSleep ? `${weekHealthSummary.avgSleep}h` : '-'],
+                  ['Ready', weekHealthSummary.avgReadiness ? `${weekHealthSummary.avgReadiness}` : '-'],
                 ].map(([label, value]) => (
                   <div key={label} className="macro-pill rounded-xl p-2 text-center">
                     <p className="text-xs font-bold t-text">{value}</p>
@@ -151,12 +155,30 @@ export default function MonitorPage() {
                 ))}
               </div>
               <p className="text-xs t-muted mt-3">
-                Intake is food calories. Burn is total daily energy burned, including resting/sleeping baseline. Move is active calories from movement.
+                Intake is food logged. Burned is total calories out, including resting and sleeping baseline.
               </p>
-              <p className="text-xs t-muted mt-1">
-                Avg active time: {weekHealthSummary.avgActive ? `${weekHealthSummary.avgActive}m/day` : '-'}
-                {weekHealthSummary.avgSleep ? ` • Avg sleep: ${weekHealthSummary.avgSleep}h` : ''}
-              </p>
+              {weekHealthSummary.missingSleep && (
+                <p className="text-xs t-muted mt-1">Sleep is blank until Google Health returns sleep data.</p>
+              )}
+              <div className="mt-4 space-y-2">
+                {weekRows.map((row) => (
+                  <div key={row.date} className="macro-pill rounded-xl p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-semibold t-text">{formatMonitorDate(row.date)}</p>
+                        <p className="text-[11px] t-muted mt-0.5">
+                          {row.steps ? `${row.steps.toLocaleString()} steps` : 'No steps'} • {row.sleepHours ? `${row.sleepHours}h sleep` : 'No sleep'}
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-xs font-bold t-text">{row.intake !== null ? `${row.intake} in` : '- in'} / {row.burned !== null ? `${row.burned} out` : '- out'}</p>
+                        <p className="text-[11px] t-muted">{row.readiness !== null ? `${row.readiness} readiness` : 'No readiness'}</p>
+                      </div>
+                    </div>
+                    {row.readinessNote && <p className="text-[10px] t-muted mt-2">{row.readinessNote}</p>}
+                  </div>
+                ))}
+              </div>
             </section>
           )}
 
@@ -304,12 +326,61 @@ function summarizeHealthAndFoodWeek(health: HealthDailyMetrics[], analyses: Retu
   }
   const avgSleepMinutes = avg(health.map((item) => item.sleep_minutes))
   return {
-    days: health.length,
+    healthDays: health.length,
     avgIntake: avg(analyses.map((analysis) => analysis.totals.cal)),
     avgBurn: avg(health.map((item) => item.calories_out)),
-    avgMove: avg(health.map((item) => item.activity_calories)),
     avgSteps: avg(health.map((item) => item.steps)),
-    avgActive: avg(health.map((item) => item.active_minutes)),
     avgSleep: avgSleepMinutes ? Math.round((avgSleepMinutes / 60) * 10) / 10 : null,
+    avgReadiness: avg(health.map((item) => item.readiness_score)),
+    missingSleep: health.length > 0 && health.every((item) => typeof item.sleep_minutes !== 'number'),
   }
+}
+
+function buildHealthFoodRows(health: HealthDailyMetrics[], analyses: ReturnType<typeof analyzeFoodDay>[]) {
+  const healthByDate = new Map(health.map((item) => [item.date, item]))
+  const rows: Array<{
+    date: string
+    intake: number | null
+    burned: number | null
+    steps: number | null
+    sleepHours: number | null
+    readiness: number | null
+    readinessNote: string | null
+  }> = analyses.map((analysis) => {
+    const metrics = healthByDate.get(analysis.date)
+    return {
+      date: analysis.date,
+      intake: Math.round(analysis.totals.cal),
+      burned: metrics?.calories_out || null,
+      steps: metrics?.steps || null,
+      sleepHours: typeof metrics?.sleep_minutes === 'number'
+        ? Math.round((metrics.sleep_minutes / 60) * 10) / 10
+        : null,
+      readiness: metrics?.readiness_score || null,
+      readinessNote: metrics?.readiness_note || null,
+    }
+  })
+  const analysisDates = new Set(rows.map((row) => row.date))
+  health.forEach((metrics) => {
+    if (analysisDates.has(metrics.date)) return
+    rows.push({
+      date: metrics.date,
+      intake: null,
+      burned: metrics.calories_out || null,
+      steps: metrics.steps || null,
+      sleepHours: typeof metrics.sleep_minutes === 'number'
+        ? Math.round((metrics.sleep_minutes / 60) * 10) / 10
+        : null,
+      readiness: metrics.readiness_score || null,
+      readinessNote: metrics.readiness_note || null,
+    })
+  })
+  return rows
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 7)
+}
+
+function shortNumber(value: number) {
+  if (value >= 1000) return `${Math.round(value / 100) / 10}k`
+  return value.toLocaleString()
 }

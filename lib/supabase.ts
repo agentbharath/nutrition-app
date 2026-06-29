@@ -65,6 +65,8 @@ export interface HealthDailyMetrics {
   resting_heart_rate?: number | null
   sleep_minutes?: number | null
   sleep_efficiency?: number | null
+  readiness_score?: number | null
+  readiness_note?: string | null
   weight_kg?: number | null
   body_fat_pct?: number | null
   raw?: unknown

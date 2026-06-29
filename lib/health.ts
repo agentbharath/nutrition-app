@@ -32,6 +32,8 @@ export interface HealthDailyMetrics {
   sleep_efficiency?: number | null
   weight_kg?: number | null
   body_fat_pct?: number | null
+  readiness_score?: number | null
+  readiness_note?: string | null
   raw?: unknown
 }
 
@@ -271,6 +273,12 @@ export async function syncGoogleHealthDate(date: string, supabase = createServic
   const values = Object.fromEntries(entries.map(([key, value]) => [key, value])) as Record<string, number | null>
   const raw = Object.fromEntries(entries.map(([key, , rollup]) => [key, rollup]))
   const activeByLevel = extractActiveMinutesByLevel(raw.active_minutes)
+  const readiness = calculateReadinessScore({
+    steps: roundOrNull(values.steps),
+    activity_calories: roundOrNull(values.active_energy),
+    active_minutes: roundOrNull(values.active_minutes),
+    sleep_minutes: null,
+  })
 
   const metrics: HealthDailyMetrics = {
     provider: PROVIDER,
@@ -286,6 +294,8 @@ export async function syncGoogleHealthDate(date: string, supabase = createServic
     resting_heart_rate: roundOrNull(values.resting_heart_rate),
     sleep_minutes: null,
     sleep_efficiency: null,
+    readiness_score: readiness.score,
+    readiness_note: readiness.note,
     weight_kg: values.weight_kg,
     body_fat_pct: values.body_fat_pct,
     raw,
@@ -358,6 +368,8 @@ export function compactHealthMetrics(metrics?: HealthDailyMetrics | null) {
     resting_heart_rate: metrics.resting_heart_rate,
     sleep_minutes: metrics.sleep_minutes,
     sleep_efficiency: metrics.sleep_efficiency,
+    readiness_score: metrics.readiness_score,
+    readiness_note: metrics.readiness_note,
     weight_kg: metrics.weight_kg,
     body_fat_pct: metrics.body_fat_pct,
   }
@@ -482,6 +494,54 @@ function averageNumbers(...values: Array<number | null>) {
 
 function roundOrNull(value: number | null | undefined) {
   return typeof value === 'number' ? Math.round(value) : null
+}
+
+function calculateReadinessScore(metrics: Pick<HealthDailyMetrics, 'steps' | 'activity_calories' | 'active_minutes' | 'sleep_minutes'>) {
+  const hasSignal = [metrics.steps, metrics.activity_calories, metrics.active_minutes, metrics.sleep_minutes]
+    .some((value) => typeof value === 'number')
+  if (!hasSignal) return { score: null, note: null }
+
+  let score = 70
+  const notes: string[] = []
+  const sleepMinutes = metrics.sleep_minutes
+  if (typeof sleepMinutes === 'number') {
+    const hours = sleepMinutes / 60
+    if (hours >= 7 && hours <= 9) {
+      score += 18
+      notes.push('sleep on target')
+    } else if (hours < 6) {
+      score -= 18
+      notes.push('short sleep')
+    } else if (hours < 7) {
+      score -= 8
+      notes.push('light sleep')
+    } else {
+      score += 5
+      notes.push('long sleep')
+    }
+  } else {
+    score = Math.min(score, 78)
+    notes.push('no sleep signal')
+  }
+
+  const activeMinutes = metrics.active_minutes || 0
+  const moveCalories = metrics.activity_calories || 0
+  const steps = metrics.steps || 0
+  if (activeMinutes > 180 || moveCalories > 650 || steps > 15000) {
+    score -= 10
+    notes.push('high activity load')
+  } else if (activeMinutes >= 45 || steps >= 6000) {
+    score += 8
+    notes.push('solid movement')
+  } else if (activeMinutes < 20 && steps < 2500) {
+    score -= 5
+    notes.push('low movement')
+  }
+
+  return {
+    score: Math.max(0, Math.min(100, Math.round(score))),
+    note: notes.join('; '),
+  }
 }
 
 function getPacificDate(offsetDays = 0) {

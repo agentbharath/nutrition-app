@@ -28,6 +28,8 @@ create table if not exists health_daily_metrics (
   resting_heart_rate integer,
   sleep_minutes integer,
   sleep_efficiency integer,
+  readiness_score integer,
+  readiness_note text,
   weight_kg numeric,
   body_fat_pct numeric,
   raw jsonb,
@@ -48,6 +50,10 @@ begin
     add constraint health_daily_metrics_provider_check
     check (provider in ('google_health', 'fitbit'));
 end $$;
+
+alter table health_daily_metrics
+  add column if not exists readiness_score integer,
+  add column if not exists readiness_note text;
 
 create or replace function set_health_updated_at()
 returns trigger as $$
