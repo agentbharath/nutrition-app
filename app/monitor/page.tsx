@@ -27,9 +27,8 @@ interface DailyReportRow {
   burned: number | null
   steps: number | null
   sleepHours: number | null
-  sleepScore: number | null
-  readiness: number | null
-  readinessNote: string | null
+  activeMinutes: number | null
+  cardioLoad: number | null
 }
 
 export default function MonitorPage() {
@@ -183,8 +182,8 @@ export default function MonitorPage() {
                         ['Steps', selectedRow.steps !== null ? selectedRow.steps.toLocaleString() : '-'],
                         ['Burn', selectedRow.burned !== null ? selectedRow.burned : '-'],
                         ['Sleep', selectedRow.sleepHours !== null ? `${selectedRow.sleepHours}h` : '-'],
-                        ['Sleep score', selectedRow.sleepScore !== null ? selectedRow.sleepScore : '-'],
-                        ['Ready', selectedRow.readiness !== null ? selectedRow.readiness : '-'],
+                        ['Active', selectedRow.activeMinutes !== null ? `${selectedRow.activeMinutes}m` : '-'],
+                        ['Cardio', selectedRow.cardioLoad !== null ? selectedRow.cardioLoad : '-'],
                       ].map(([label, value]) => (
                         <div key={label} className="rounded-lg p-1.5 text-center macro-pill">
                           <p className="text-[10px] font-bold t-text leading-tight">{value}</p>
@@ -194,8 +193,6 @@ export default function MonitorPage() {
                     </div>
                   </div>
                 </div>
-
-                {selectedRow.readinessNote && <p className="text-[10px] t-muted mt-1">{selectedRow.readinessNote}</p>}
               </div>
 
               {selectedDailyAi ? (
@@ -356,9 +353,8 @@ function buildHealthFoodRows(dates: string[], health: HealthDailyMetrics[], anal
       sleepHours: typeof metrics?.sleep_minutes === 'number'
         ? Math.round((metrics.sleep_minutes / 60) * 10) / 10
         : null,
-      sleepScore: metrics?.sleep_efficiency || null,
-      readiness: metrics?.readiness_score || null,
-      readinessNote: metrics?.readiness_note || null,
+      activeMinutes: metrics?.active_minutes || null,
+      cardioLoad: metrics?.active_zone_minutes || null,
     }
   })
 }
