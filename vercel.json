@@ -7,6 +7,14 @@
     {
       "path": "/api/cron?type=dinner",
       "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/cron?type=daily-analysis",
+      "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/cron?type=weekly-analysis",
+      "schedule": "0 8 * * 1"
     }
   ]
 }

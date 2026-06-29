@@ -2,60 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { supabase, DailyLog } from '@/lib/supabase'
-import { TARGETS } from '@/lib/meals'
-
-type MetricKey = 'cal' | 'protein' | 'sodium' | 'fiber' | 'carbs'
-
-interface MonitorDay {
-  date: string
-  cal: number
-  protein: number
-  sodium: number
-  fiber: number
-  carbs: number
-  complete: boolean
-}
-
-const METRICS: Array<{ key: MetricKey; label: string; unit: string; target: number; invert?: boolean; color: string }> = [
-  { key: 'cal', label: 'Calories', unit: 'cal', target: TARGETS.cal, color: 'var(--macro-cal)' },
-  { key: 'protein', label: 'Protein', unit: 'g', target: TARGETS.protein, color: 'var(--macro-protein)' },
-  { key: 'sodium', label: 'Sodium', unit: 'mg', target: TARGETS.sodium, invert: true, color: 'var(--macro-sodium)' },
-  { key: 'fiber', label: 'Fiber', unit: 'g', target: TARGETS.fiber, color: 'var(--macro-fiber)' },
-  { key: 'carbs', label: 'Carbs', unit: 'g', target: TARGETS.carbs, color: 'var(--macro-carbs)' },
-]
-
-function valueFor(log: DailyLog, key: MetricKey) {
-  const consumed = log[`${key}_consumed` as keyof DailyLog]
-  const planned = log[`${key}_total` as keyof DailyLog]
-  return Number(consumed || planned || 0)
-}
-
-function toDay(log: DailyLog): MonitorDay {
-  return {
-    date: log.date,
-    cal: valueFor(log, 'cal'),
-    protein: valueFor(log, 'protein'),
-    sodium: valueFor(log, 'sodium'),
-    fiber: valueFor(log, 'fiber'),
-    carbs: valueFor(log, 'carbs'),
-    complete: Boolean(log.breakfast_confirmed || log.lunch_confirmed || log.dinner_confirmed || log.shake_confirmed || log.snack_confirmed),
-  }
-}
-
-function average(days: MonitorDay[], key: MetricKey) {
-  if (days.length === 0) return 0
-  return days.reduce((sum, day) => sum + day[key], 0) / days.length
-}
-
-function hitRate(days: MonitorDay[], key: MetricKey, invert?: boolean) {
-  if (days.length === 0) return 0
-  const hits = days.filter((day) => invert ? day[key] <= TARGETS[key] : day[key] >= TARGETS[key]).length
-  return Math.round((hits / days.length) * 100)
-}
-
-function formatDate(date: string) {
-  return new Date(`${date}T12:00:00`).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })
-}
+import { MONITOR_METRICS, average, formatMonitorDate, hitRate, riskIssues, toMonitorDay, weeklyScore } from '@/lib/nutrition-monitor'
 
 function trend(now: number, previous: number) {
   if (!previous) return { label: 'new', tone: 't-muted' }
@@ -76,14 +23,14 @@ export default function MonitorPage() {
       .then(({ data }) => { setLogs(data || []); setLoading(false) })
   }, [])
 
-  const days = useMemo(() => logs.map(toDay), [logs])
+  const days = useMemo(() => logs.map(toMonitorDay), [logs])
   const last7 = days.slice(0, 7)
   const previous7 = days.slice(7, 14)
   const chartDays = [...last7].reverse()
-  const riskDays = last7.filter((day) => day.sodium > TARGETS.sodium || day.protein < TARGETS.protein || day.fiber < TARGETS.fiber)
+  const riskDays = last7.filter((day) => riskIssues(day).length > 0)
 
-  const weeklyScore = last7.length
-    ? Math.round(METRICS.reduce((score, metric) => score + hitRate(last7, metric.key, metric.invert), 0) / METRICS.length)
+  const score = last7.length
+    ? weeklyScore(last7)
     : 0
 
   return (
@@ -111,7 +58,7 @@ export default function MonitorPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs t-muted uppercase tracking-wider">Weekly score</p>
-                <p className="text-3xl font-bold t-text mt-1">{weeklyScore}%</p>
+                <p className="text-3xl font-bold t-text mt-1">{score}%</p>
               </div>
               <div className="text-right">
                 <p className="text-xs t-muted">Last {last7.length} logged days</p>
@@ -121,7 +68,7 @@ export default function MonitorPage() {
           </section>
 
           <section className="grid grid-cols-2 gap-2">
-            {METRICS.map((metric) => {
+            {MONITOR_METRICS.map((metric) => {
               const avg = average(last7, metric.key)
               const previousAvg = average(previous7, metric.key)
               const t = trend(avg, previousAvg)
@@ -153,11 +100,11 @@ export default function MonitorPage() {
               {chartDays.map((day) => (
                 <div key={day.date}>
                   <div className="flex items-center justify-between mb-1">
-                    <p className="text-xs font-medium t-text">{formatDate(day.date)}</p>
+                    <p className="text-xs font-medium t-text">{formatMonitorDate(day.date)}</p>
                     <p className="text-xs t-muted">{Math.round(day.cal)} cal • {Math.round(day.protein)}g P • {Math.round(day.sodium)}mg Na</p>
                   </div>
                   <div className="grid grid-cols-5 gap-1">
-                    {METRICS.map((metric) => {
+                    {MONITOR_METRICS.map((metric) => {
                       const rawPct = (day[metric.key] / metric.target) * 100
                       const pct = Math.max(3, Math.min(100, rawPct))
                       const bad = metric.invert ? day[metric.key] > metric.target : day[metric.key] < metric.target
@@ -183,15 +130,11 @@ export default function MonitorPage() {
             ) : (
               <div className="space-y-2">
                 {riskDays.map((day) => {
-                  const issues = [
-                    day.sodium > TARGETS.sodium ? 'Na over' : '',
-                    day.protein < TARGETS.protein ? 'Protein low' : '',
-                    day.fiber < TARGETS.fiber ? 'Fiber low' : '',
-                  ].filter(Boolean)
+                  const issues = riskIssues(day)
                   return (
                     <div key={day.date} className="flex items-center justify-between gap-3 border-b t-border pb-2 last:border-b-0 last:pb-0">
                       <div>
-                        <p className="text-sm font-semibold t-text">{formatDate(day.date)}</p>
+                        <p className="text-sm font-semibold t-text">{formatMonitorDate(day.date)}</p>
                         <p className="text-xs t-muted">{issues.join(' • ')}</p>
                       </div>
                       <Link href="/history" className="text-xs btn-secondary rounded-lg px-2 py-1">Review</Link>
