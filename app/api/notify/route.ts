@@ -4,6 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getClaudeModel, generateDailyClaudeReport, generateWeeklyClaudeReport } from '@/lib/claude-nutrition'
 import { QuickAddEntry, analyzeFoodDay, buildDailyFoodSummary, buildWeeklySummary, getPacificDate, toMonitorDay } from '@/lib/nutrition-monitor'
 import { DailyLog, NutritionAiReport } from '@/lib/supabase'
+import { getHealthMetricsForDates, healthIntegrationConfigured, syncRecentFitbitDays } from '@/lib/health'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -48,6 +49,12 @@ async function getQuickAddsForDates(dates: string[]) {
 }
 
 async function buildAnalysisMessage(type: string) {
+  if ((type === 'daily-analysis' || type === 'weekly-analysis') && healthIntegrationConfigured()) {
+    await syncRecentFitbitDays(type === 'weekly-analysis' ? 8 : 2).catch((error) => {
+      console.error('Health pre-sync failed', error)
+    })
+  }
+
   if (type === 'daily-analysis') {
     const date = getPacificDate(-1)
     const { data: log } = await supabase
@@ -68,7 +75,8 @@ async function buildAnalysisMessage(type: string) {
     const quickAdds = await getQuickAddsForDates([date])
     const analysis = analyzeFoodDay(log, quickAdds || [])
     const previousWeekly = await getPreviousWeeklyReport(date)
-    const claudeReport = await generateDailyClaudeReport(analysis, previousWeekly)
+    const healthMetrics = (await getHealthMetricsForDates([date]))[0] || null
+    const claudeReport = await generateDailyClaudeReport(analysis, previousWeekly, healthMetrics)
 
     await saveAiReport({
       report_type: 'daily',
@@ -76,7 +84,7 @@ async function buildAnalysisMessage(type: string) {
       period_end: date,
       model: getClaudeModel(),
       analysis: claudeReport,
-      input_snapshot: { deterministic_analysis: analysis, previous_weekly_report: previousWeekly },
+      input_snapshot: { deterministic_analysis: analysis, health_metrics: healthMetrics, previous_weekly_report: previousWeekly },
     })
 
     const fallback = buildDailyFoodSummary(analysis)
@@ -113,7 +121,8 @@ async function buildAnalysisMessage(type: string) {
     const quickAdds = await getQuickAddsForDates(sortedLogs.map((log) => log.date))
     const analyses = sortedLogs.map((log) => analyzeFoodDay(log, quickAdds.filter((item) => item.date === log.date)))
     const previousWeekly = await getPreviousWeeklyReport(sortedLogs[0].date)
-    const claudeReport = await generateWeeklyClaudeReport(analyses, previousWeekly)
+    const healthMetrics = await getHealthMetricsForDates(sortedLogs.map((log) => log.date))
+    const claudeReport = await generateWeeklyClaudeReport(analyses, previousWeekly, healthMetrics)
 
     await saveAiReport({
       report_type: 'weekly',
@@ -121,7 +130,7 @@ async function buildAnalysisMessage(type: string) {
       period_end: sortedLogs[sortedLogs.length - 1].date,
       model: getClaudeModel(),
       analysis: claudeReport,
-      input_snapshot: { deterministic_analyses: analyses, previous_weekly_report: previousWeekly },
+      input_snapshot: { deterministic_analyses: analyses, health_metrics: healthMetrics, previous_weekly_report: previousWeekly },
     })
 
     const fallback = buildWeeklySummary(days)

@@ -9,6 +9,20 @@ export async function GET(req: NextRequest) {
   const url = req.nextUrl
   const type = url.searchParams.get('type') || 'lunch'
 
+  if (type === 'health-sync') {
+    const res = await fetch(`${url.origin}/api/health/sync`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${process.env.CRON_SECRET}`,
+      },
+      body: JSON.stringify({ days: 8 }),
+    })
+
+    const data = await res.json()
+    return NextResponse.json(data, { status: res.status })
+  }
+
   const res = await fetch(`${url.origin}/api/notify`, {
     method: 'POST',
     headers: {

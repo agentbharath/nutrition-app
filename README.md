@@ -18,6 +18,10 @@ Personal daily nutrition tracker — 1800 cal | 140g protein | <1500mg sodium
 | `CRON_SECRET` | `nutrition-cron-secret-2026` |
 | `ANTHROPIC_API_KEY` | Claude API key for scheduled food analysis |
 | `ANTHROPIC_MODEL` | Optional, defaults to `claude-sonnet-4-5-20250929` |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-only Supabase key for health OAuth token storage |
+| `FITBIT_CLIENT_ID` | Fitbit app OAuth client ID |
+| `FITBIT_CLIENT_SECRET` | Optional Fitbit OAuth client secret |
+| `FITBIT_REDIRECT_URI` | Optional, defaults to `/api/health/callback` on the current app origin |
 
 ## Claude Analysis Setup
 
@@ -27,12 +31,26 @@ Personal daily nutrition tracker — 1800 cal | 140g protein | <1500mg sodium
 
 Claude is prompted with a body-composition goal profile: reduce belly/visceral fat while preserving lean muscle, using the June 19, 2026 body snapshot as context.
 
+## Fitbit / Google Health Setup
+
+This app connects Fitbit data directly with OAuth, then stores normalized daily health metrics for analysis. The app is written through a provider adapter so the sync layer can be migrated if Google changes the Fitbit API surface.
+
+1. Run `supabase/health_metrics.sql` in the Supabase SQL editor.
+2. Create a Fitbit developer app and add this redirect URL:
+   - Production: `https://YOUR-VERCEL-DOMAIN/api/health/callback`
+   - Local: `http://localhost:3000/api/health/callback`
+3. Add `SUPABASE_SERVICE_ROLE_KEY`, `FITBIT_CLIENT_ID`, and optionally `FITBIT_CLIENT_SECRET` to Vercel.
+4. Open Settings -> Fitbit Health Sync -> Connect Fitbit.
+
+Health sync adds steps, active minutes, Active Zone Minutes, sleep, resting heart rate, calories burned, weight, and body fat context to Claude. It does not subtract calories burned from food calories.
+
 ## Features
 - 📋 Today screen with 5 progress rings
 - 🥗 Meal suggestions by day type (WFH/Office/Chipotle/Soya/Chana/Sunday)
 - ✓ Meal confirmation + swap options
 - 🔔 Push notifications at 12 PM (lunch) and 6 PM (dinner) PST
 - 🤖 Claude daily food analysis + progressive weekly reports
+- ⌚ Fitbit health sync for sleep/activity/body trend context
 - 📅 History list with expandable day details
 - ⚙️ Settings with notification toggle
 - 📱 PWA — installable to phone home screen

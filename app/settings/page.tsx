@@ -1,8 +1,20 @@
 'use client'
 import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
+import type { HealthDailyMetrics } from '@/lib/supabase'
 import { useTheme, THEMES, ThemeName } from '@/lib/theme'
 import Link from 'next/link'
+
+interface HealthStatus {
+  configured: boolean
+  connected: boolean
+  provider?: 'fitbit' | null
+  last_sync_at?: string | null
+  connected_at?: string | null
+  latest?: HealthDailyMetrics[]
+  message?: string
+  error?: string
+}
 
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
@@ -13,6 +25,9 @@ export default function SettingsPage() {
   const [testStatus, setTestStatus] = useState('')
   const [resetLoading, setResetLoading] = useState(false)
   const [resetDone, setResetDone] = useState(false)
+  const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null)
+  const [healthLoading, setHealthLoading] = useState(true)
+  const [healthSyncing, setHealthSyncing] = useState(false)
 
   useEffect(() => {
     void Promise.resolve().then(async () => {
@@ -25,6 +40,24 @@ export default function SettingsPage() {
       }
     })
   }, [])
+
+  useEffect(() => {
+    loadHealthStatus()
+  }, [])
+
+  async function loadHealthStatus() {
+    setHealthLoading(true)
+    try {
+      const res = await fetch('/api/health/status')
+      const data = await res.json()
+      setHealthStatus(data)
+    } catch (error) {
+      console.error(error)
+      setHealthStatus({ configured: false, connected: false, error: 'Could not load health status.' })
+    } finally {
+      setHealthLoading(false)
+    }
+  }
 
   async function enableNotifications() {
     setLoading(true)
@@ -85,6 +118,36 @@ export default function SettingsPage() {
     setResetDone(true)
     setTimeout(() => { window.location.href = '/' }, 600)
   }
+
+  async function syncHealthNow() {
+    setHealthSyncing(true)
+    try {
+      await fetch('/api/health/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ days: 7 }),
+      })
+      await loadHealthStatus()
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setHealthSyncing(false)
+    }
+  }
+
+  async function disconnectHealth() {
+    setHealthSyncing(true)
+    try {
+      await fetch('/api/health/disconnect', { method: 'POST' })
+      await loadHealthStatus()
+    } catch (error) {
+      console.error(error)
+    } finally {
+      setHealthSyncing(false)
+    }
+  }
+
+  const latestHealth = healthStatus?.latest?.[0]
 
   return (
     <main className="max-w-md mx-auto min-h-screen pb-24 t-bg">
@@ -154,6 +217,78 @@ export default function SettingsPage() {
           </div>
           <span className="text-lg t-accent">→</span>
         </Link>
+
+        {/* HEALTH */}
+        <div className="t-card rounded-2xl p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="font-semibold text-sm t-text mb-0.5">Fitbit Health Sync</p>
+              <p className="text-xs t-muted">Steps, sleep, heart rate, calories burned, weight, and body fat for Claude analysis</p>
+            </div>
+            <span className="text-lg">⌚</span>
+          </div>
+
+          {healthLoading ? (
+            <p className="text-xs t-muted mt-3">Checking connection...</p>
+          ) : !healthStatus?.configured ? (
+            <div className="rounded-xl p-3 mt-3" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
+              <p className="text-xs font-semibold" style={{ color: 'var(--amber)' }}>Setup needed</p>
+              <p className="text-xs t-muted mt-1">{healthStatus?.message || 'Add Fitbit env vars and run the health SQL migration.'}</p>
+            </div>
+          ) : healthStatus.connected ? (
+            <div className="mt-3 space-y-3">
+              <div className="flex items-center justify-between text-xs">
+                <span className="t-muted">Connected to Fitbit</span>
+                <span className="t-accent font-semibold">✓ Active</span>
+              </div>
+              {latestHealth && (
+                <div className="grid grid-cols-4 gap-1.5">
+                  {[
+                    ['Steps', latestHealth.steps ? latestHealth.steps.toLocaleString() : '-'],
+                    ['Sleep', latestHealth.sleep_minutes ? `${Math.round(latestHealth.sleep_minutes / 60 * 10) / 10}h` : '-'],
+                    ['RHR', latestHealth.resting_heart_rate ? `${latestHealth.resting_heart_rate}` : '-'],
+                    ['Weight', latestHealth.weight_kg ? `${latestHealth.weight_kg}kg` : '-'],
+                  ].map(([label, value]) => (
+                    <div key={label} className="macro-pill rounded-xl p-2 text-center">
+                      <p className="text-xs font-bold t-text">{value}</p>
+                      <p className="text-[10px] t-muted">{label}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <p className="text-[11px] t-muted">
+                {healthStatus.last_sync_at
+                  ? `Last sync ${new Date(healthStatus.last_sync_at).toLocaleString()}`
+                  : 'No sync completed yet.'}
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  onClick={syncHealthNow}
+                  disabled={healthSyncing}
+                  className="btn-secondary rounded-xl py-2.5 text-xs font-semibold disabled:opacity-50"
+                >
+                  {healthSyncing ? 'Syncing...' : 'Sync now'}
+                </button>
+                <button
+                  onClick={disconnectHealth}
+                  disabled={healthSyncing}
+                  className="rounded-xl py-2.5 text-xs font-semibold disabled:opacity-50"
+                  style={{ border: '1px solid rgba(239,68,68,0.3)', color: 'var(--red)' }}
+                >
+                  Disconnect
+                </button>
+              </div>
+            </div>
+          ) : (
+            <a
+              href="/api/health/connect"
+              className="mt-3 block w-full py-3 rounded-xl text-sm font-semibold text-center transition-all"
+              style={{ background: 'var(--accent-dim)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)' }}
+            >
+              Connect Fitbit
+            </a>
+          )}
+        </div>
 
                 {/* NOTIFICATIONS */}
         <div className="t-card rounded-2xl p-4">

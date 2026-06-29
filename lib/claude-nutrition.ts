@@ -1,5 +1,6 @@
 import { FoodAnalysis } from './nutrition-monitor'
 import { TARGETS } from './meals'
+import { HealthDailyMetrics, compactHealthMetrics } from './health'
 
 export interface ClaudeNutritionReport {
   title: string
@@ -145,16 +146,18 @@ export function getClaudeModel() {
   return CLAUDE_MODEL
 }
 
-export async function generateDailyClaudeReport(analysis: FoodAnalysis, previousWeekly?: unknown) {
+export async function generateDailyClaudeReport(analysis: FoodAnalysis, previousWeekly?: unknown, healthMetrics?: HealthDailyMetrics | null) {
   const fallback = reportFallback('Daily food analysis', analysis.headline, analysis)
   const prompt = [
     'Create a compact daily food analysis from this logged food.',
     'Return JSON with keys: title, summary, positives, watch, next_actions.',
     'Limits: summary <= 45 words; each array <= 3 short strings.',
     'If previous weekly focus goals are present, mention whether today helped or hurt them.',
+    'Use health metrics as activity, sleep, recovery, and body trend context. Do not subtract calories_out from food calories.',
     JSON.stringify({
       user_goal_profile: USER_GOAL_PROFILE,
       daily_log: compactAnalysis(analysis),
+      health_metrics: compactHealthMetrics(healthMetrics),
       previous_weekly_report: previousWeekly || null,
     }),
   ].join('\n')
@@ -167,7 +170,11 @@ export async function generateDailyClaudeReport(analysis: FoodAnalysis, previous
   }
 }
 
-export async function generateWeeklyClaudeReport(analyses: FoodAnalysis[], previousWeekly?: unknown) {
+export async function generateWeeklyClaudeReport(
+  analyses: FoodAnalysis[],
+  previousWeekly?: unknown,
+  healthMetrics: HealthDailyMetrics[] = []
+) {
   const scoreDays = analyses.map(compactAnalysis)
   const fallback = reportFallback(
     'Weekly nutrition analysis',
@@ -179,10 +186,12 @@ export async function generateWeeklyClaudeReport(analyses: FoodAnalysis[], previ
     'Return JSON with keys: title, summary, positives, watch, progress, focus_goals, next_actions.',
     'Limits: summary <= 55 words; each array <= 3 short strings.',
     'Focus on repeated food patterns, not generic advice.',
+    'Use health metrics to connect food choices with activity, sleep, recovery, and body trend. Do not subtract calories_out from food calories.',
     JSON.stringify({
       user_goal_profile: USER_GOAL_PROFILE,
       targets: TARGETS,
       days: scoreDays,
+      health_metrics: healthMetrics.map(compactHealthMetrics).filter(Boolean),
       previous_weekly_report: previousWeekly || null,
     }),
   ].join('\n')

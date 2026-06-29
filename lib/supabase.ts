@@ -49,3 +49,22 @@ export interface NutritionAiReport {
   created_at?: string
   updated_at?: string
 }
+
+export interface HealthDailyMetrics {
+  id?: string
+  provider: 'fitbit'
+  date: string
+  steps?: number | null
+  calories_out?: number | null
+  activity_calories?: number | null
+  lightly_active_minutes?: number | null
+  fairly_active_minutes?: number | null
+  very_active_minutes?: number | null
+  active_minutes?: number | null
+  active_zone_minutes?: number | null
+  resting_heart_rate?: number | null
+  sleep_minutes?: number | null
+  sleep_efficiency?: number | null
+  weight_kg?: number | null
+  body_fat_pct?: number | null
+}

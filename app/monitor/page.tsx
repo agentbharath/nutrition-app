@@ -2,6 +2,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { supabase, DailyLog } from '@/lib/supabase'
+import type { HealthDailyMetrics } from '@/lib/supabase'
 import type { ClaudeNutritionReport } from '@/lib/claude-nutrition'
 import { analyzeFoodDay, formatMonitorDate, QuickAddEntry, toMonitorDay, weeklyScore } from '@/lib/nutrition-monitor'
 
@@ -17,6 +18,7 @@ export default function MonitorPage() {
   const [logs, setLogs] = useState<DailyLog[]>([])
   const [quickAdds, setQuickAdds] = useState<QuickAddEntry[]>([])
   const [aiReports, setAiReports] = useState<AiReportRow[]>([])
+  const [healthMetrics, setHealthMetrics] = useState<HealthDailyMetrics[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -34,6 +36,11 @@ export default function MonitorPage() {
       setLogs(logData || [])
       setQuickAdds((quickAddData || []) as QuickAddEntry[])
       setAiReports((reportData || []) as AiReportRow[])
+      const healthRes = await fetch('/api/health/status').catch(() => null)
+      if (healthRes?.ok) {
+        const healthData = await healthRes.json()
+        setHealthMetrics(healthData.latest || [])
+      }
       setLoading(false)
     }
     load()
@@ -52,6 +59,9 @@ export default function MonitorPage() {
     ? aiReports.find((report) => report.report_type === 'daily' && report.period_end === selectedLog.date)
     : null
   const latestWeeklyAi = aiReports.find((report) => report.report_type === 'weekly')
+  const latestHealth = selectedLog
+    ? healthMetrics.find((item) => item.date === selectedLog.date) || healthMetrics[0]
+    : healthMetrics[0]
   const weekAnalyses = logs.slice(0, 7).map((log) => analyzeFoodDay(log, quickAdds.filter((item) => item.date === log.date)))
   const repeatedWatches = weekAnalyses.flatMap((analysis) => analysis.watch)
   const sodiumWatchCount = repeatedWatches.filter((item) => item.toLowerCase().includes('sodium')).length
@@ -116,6 +126,34 @@ export default function MonitorPage() {
               ))}
             </div>
           </section>
+
+          {latestHealth && (
+            <section className="t-card rounded-2xl p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-xs t-muted uppercase tracking-wider">Health context</p>
+                  <h2 className="text-lg font-bold t-text mt-1">{formatMonitorDate(latestHealth.date)}</h2>
+                </div>
+                <p className="text-xs t-muted text-right">Fitbit</p>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5 mt-4">
+                {[
+                  ['Steps', latestHealth.steps ? latestHealth.steps.toLocaleString() : '-'],
+                  ['Sleep', latestHealth.sleep_minutes ? `${Math.round(latestHealth.sleep_minutes / 60 * 10) / 10}h` : '-'],
+                  ['AZM', latestHealth.active_zone_minutes ?? '-'],
+                  ['RHR', latestHealth.resting_heart_rate ?? '-'],
+                ].map(([label, value]) => (
+                  <div key={label} className="macro-pill rounded-xl p-2 text-center">
+                    <p className="text-xs font-bold t-text">{value}</p>
+                    <p className="text-[10px] t-muted">{label}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs t-muted mt-3">
+                Claude uses this for activity, sleep, and recovery context. Food calories stay separate from calories burned.
+              </p>
+            </section>
+          )}
 
           <section className="t-card rounded-2xl p-4">
             <p className="text-xs t-muted uppercase tracking-wider mb-3">What was eaten</p>

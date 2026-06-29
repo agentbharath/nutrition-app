@@ -15,6 +15,10 @@
     {
       "path": "/api/cron?type=weekly-analysis",
       "schedule": "0 8 * * 1"
+    },
+    {
+      "path": "/api/cron?type=health-sync",
+      "schedule": "50 7 * * *"
     }
   ]
 }
