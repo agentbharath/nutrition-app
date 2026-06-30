@@ -182,8 +182,16 @@ function reportFallback(title: string, summary: string, analysis?: FoodAnalysis)
 function extractJson(text: string) {
   const start = text.indexOf('{')
   const end = text.lastIndexOf('}')
-  if (start === -1 || end === -1 || end <= start) throw new Error('Claude did not return JSON')
-  return JSON.parse(text.slice(start, end + 1))
+  if (start === -1 || end === -1 || end <= start) {
+    console.error('[extractJson] No JSON found in Claude response. First 200 chars:', text.slice(0, 200))
+    throw new Error('Claude did not return JSON')
+  }
+  try {
+    return JSON.parse(text.slice(start, end + 1))
+  } catch (e) {
+    console.error('[extractJson] JSON parse failed. Response length:', text.length, 'Error:', e)
+    throw e
+  }
 }
 
 function safeText(value: unknown): string {
@@ -316,7 +324,7 @@ export async function generateDailyClaudeReport(
   ].join('\n')
 
   try {
-    return normalizeReport(await callClaude(prompt, 1400), fallback)
+    return normalizeReport(await callClaude(prompt, 2000), fallback)
   } catch (error) {
     console.error('[Claude Daily Report Error]', error instanceof Error ? error.message : error)
     return fallback
@@ -378,7 +386,7 @@ export async function generateWeeklyClaudeReport(
   ].join('\n')
 
   try {
-    return normalizeReport(await callClaude(prompt, 1600), fallback)
+    return normalizeReport(await callClaude(prompt, 2400), fallback)
   } catch (error) {
     console.error(error)
     return fallback
