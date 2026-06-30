@@ -218,6 +218,8 @@ export async function generateDailyClaudeReport(analysis: FoodAnalysis, previous
     'If previous weekly focus goals are present, state plainly whether today helped or hurt them — no hedging.',
     'Reference specific logged foods by name when explaining a flag or insight. Use the user goal profile as the coaching frame throughout — belly/visceral fat loss without losing muscle.',
     'Do not pad. If a day was simply fine with nothing notable, say that briefly and move on rather than manufacturing insight.',
+    'next_actions can have fewer than 3 items. Only include a second or third action if it is genuinely a different, real lever — never invent one to fill the slot.',
+    'Never critique how the user logs data (e.g. number of quick-adds, entry order, app usage patterns). Logging mechanics have zero nutritional consequence — the macros total identically regardless of how many entries they were split across. Only critique what was eaten and in what amount, never how it was recorded.',
     '',
     'Return JSON with keys: title, summary, positives, watch, next_actions, food_flags.',
     JSON.stringify({
