@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { ThemeProvider } from '@/lib/theme'
-import { AuthProvider } from '@/lib/auth'
 
 export const metadata: Metadata = {
   title: 'Nutrition Tracker',
@@ -25,9 +24,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-screen font-sans antialiased transition-colors duration-300" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
         <ThemeProvider>
-          <AuthProvider>
-            {children}
-          </AuthProvider>
+          {children}
         </ThemeProvider>
       </body>
     </html>

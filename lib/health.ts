@@ -548,7 +548,7 @@ function getPacificDateFromIso(value: string) {
 async function upsertHealthMetrics(supabase: SupabaseClient, metrics: HealthDailyMetrics) {
   const result = await supabase
     .from('health_daily_metrics')
-    .upsert(metrics, { onConflict: 'user_id,provider,date' })
+    .upsert(metrics, { onConflict: 'provider,date' })
     .select('*')
     .single<HealthDailyMetrics>()
 
@@ -560,7 +560,7 @@ async function upsertHealthMetrics(supabase: SupabaseClient, metrics: HealthDail
   delete fallbackMetrics.cardio_load
   return supabase
     .from('health_daily_metrics')
-    .upsert(fallbackMetrics, { onConflict: 'user_id,provider,date' })
+    .upsert(fallbackMetrics, { onConflict: 'provider,date' })
     .select('*')
     .single<HealthDailyMetrics>()
 }

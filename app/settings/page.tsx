@@ -3,8 +3,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { HealthDailyMetrics } from '@/lib/supabase'
 import { useTheme, THEMES, ThemeName } from '@/lib/theme'
-import { useAuth } from '@/lib/auth'
-import ProfileCard from '@/components/ProfileCard'
+
 import BottomNav from '@/components/BottomNav'
 import { BellIcon, TrashIcon, WatchIcon } from '@/components/Icons'
 import Link from 'next/link'
@@ -197,9 +196,6 @@ export default function SettingsPage() {
       </div>
 
       <div className="px-4 space-y-3">
-
-        {/* PROFILE */}
-        <ProfileCard />
 
         {/* THEME */}
         <details className="t-card rounded-2xl p-4 group">
