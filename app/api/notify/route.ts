@@ -52,7 +52,7 @@ async function getQuickAddsForDates(dates: string[]) {
   return data || []
 }
 
-async function buildAnalysisMessage(type: string) {
+export async function buildAnalysisMessage(type: string) {
   if ((type === 'daily-analysis' || type === 'weekly-analysis') && healthIntegrationConfigured()) {
     await syncRecentHealthDays(type === 'weekly-analysis' ? 8 : 2).catch((error) => {
       console.error('Health pre-sync failed', error)

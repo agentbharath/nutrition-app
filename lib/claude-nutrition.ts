@@ -44,7 +44,7 @@ interface ClaudeResponse {
   content?: ClaudeTextBlock[]
 }
 
-const CLAUDE_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5-20250929'
+const CLAUDE_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6'
 
 const USER_GOAL_PROFILE = {
   primary_goal: 'Reduce belly and visceral fat while preserving all lean muscle on a structured 4.5 month fat-loss protocol.',
@@ -318,7 +318,7 @@ export async function generateDailyClaudeReport(
   try {
     return normalizeReport(await callClaude(prompt, 1400), fallback)
   } catch (error) {
-    console.error(error)
+    console.error('[Claude Daily Report Error]', error instanceof Error ? error.message : error)
     return fallback
   }
 }
