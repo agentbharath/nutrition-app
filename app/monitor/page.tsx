@@ -196,17 +196,21 @@ export default function MonitorPage() {
               </div>
 
               {selectedDailyAi ? (
-                <div className="rounded-2xl p-4" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+                <div className="rounded-2xl p-4 space-y-4" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="text-xs t-muted uppercase tracking-wider">Claude daily report</p>
                       <h3 className="text-base font-bold t-text mt-1">{selectedDailyAi.analysis.title}</h3>
                     </div>
-                    <p className="text-[10px] t-muted text-right">{selectedDailyAi.model}</p>
+                    <p className="text-[10px] t-muted text-right shrink-0">{selectedDailyAi.model}</p>
                   </div>
-                  <p className="text-sm t-muted mt-2">{selectedDailyAi.analysis.summary}</p>
+
+                  {selectedDailyAi.analysis.overall_assessment && (
+                    <p className="text-sm t-text leading-relaxed">{selectedDailyAi.analysis.overall_assessment}</p>
+                  )}
+
                   {Boolean(selectedDailyAi.analysis.food_flags?.length) && (
-                    <div className="mt-3 rounded-xl p-3" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                    <div className="rounded-xl p-3" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
                       <p className="text-[10px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: 'var(--red)' }}>Food flags</p>
                       <div className="space-y-1">
                         {selectedDailyAi.analysis.food_flags?.map((item) => (
@@ -215,11 +219,62 @@ export default function MonitorPage() {
                       </div>
                     </div>
                   )}
-                  {Boolean(selectedDailyAi.analysis.next_actions?.length) && (
-                    <div className="mt-3 space-y-1.5">
-                      {selectedDailyAi.analysis.next_actions?.map((item) => (
-                        <p key={item} className="text-sm t-text">→ {item}</p>
-                      ))}
+
+                  {Boolean(selectedDailyAi.analysis.biggest_wins?.length) && (
+                    <div>
+                      <p className="text-[10px] t-muted uppercase tracking-wider font-semibold mb-1.5">Biggest wins</p>
+                      <div className="space-y-1.5">
+                        {selectedDailyAi.analysis.biggest_wins?.map((item) => (
+                          <p key={item} className="text-sm t-text">✓ {item}</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {Boolean(selectedDailyAi.analysis.biggest_opportunities?.length) && (
+                    <div>
+                      <p className="text-[10px] t-muted uppercase tracking-wider font-semibold mb-1.5">Biggest opportunities</p>
+                      <div className="space-y-1.5">
+                        {selectedDailyAi.analysis.biggest_opportunities?.map((item) => (
+                          <p key={item} className="text-sm t-muted">○ {item}</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {selectedDailyAi.analysis.food_analysis && (
+                    <div>
+                      <p className="text-[10px] t-muted uppercase tracking-wider font-semibold mb-1.5">Food analysis</p>
+                      <p className="text-sm t-muted leading-relaxed">{selectedDailyAi.analysis.food_analysis}</p>
+                    </div>
+                  )}
+
+                  {selectedDailyAi.analysis.recovery_analysis && (
+                    <div>
+                      <p className="text-[10px] t-muted uppercase tracking-wider font-semibold mb-1.5">Recovery analysis</p>
+                      <p className="text-sm t-muted leading-relaxed">{selectedDailyAi.analysis.recovery_analysis}</p>
+                    </div>
+                  )}
+
+                  {Boolean(selectedDailyAi.analysis.pattern_detection?.length) && (
+                    <div>
+                      <p className="text-[10px] t-muted uppercase tracking-wider font-semibold mb-1.5">Patterns emerging</p>
+                      <div className="space-y-1.5">
+                        {selectedDailyAi.analysis.pattern_detection?.map((item) => (
+                          <p key={item} className="text-sm t-muted">↗ {item}</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {Boolean(selectedDailyAi.analysis.personalized_recommendations?.length) && (
+                    <div className="pt-1 border-t" style={{ borderColor: 'var(--border)' }}>
+                      <p className="text-[10px] t-accent uppercase tracking-wider font-semibold mb-1.5 mt-2">Focus for today</p>
+                      <div className="space-y-1.5">
+                        {selectedDailyAi.analysis.personalized_recommendations?.map((item) => (
+                          <p key={item} className="text-sm t-text">→ {item}</p>
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -302,36 +357,99 @@ export default function MonitorPage() {
           </section>
 
           {latestWeeklyAi && (
-            <section className="t-card rounded-2xl p-4">
+            <section className="t-card rounded-2xl p-4 space-y-4">
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs t-muted uppercase tracking-wider">Claude progressive report</p>
+                  <p className="text-xs t-muted uppercase tracking-wider">Claude weekly report</p>
                   <h2 className="text-lg font-bold t-text mt-1">{latestWeeklyAi.analysis.title}</h2>
                 </div>
-                <p className="text-[10px] t-muted text-right">
+                <p className="text-[10px] t-muted text-right shrink-0">
                   {formatMonitorDate(latestWeeklyAi.period_start)} - {formatMonitorDate(latestWeeklyAi.period_end)}
                 </p>
               </div>
-              <p className="text-sm t-muted mt-2">{latestWeeklyAi.analysis.summary}</p>
-              {Boolean(latestWeeklyAi.analysis.progress?.length) && (
-                <div className="mt-3">
-                  <p className="text-xs t-muted uppercase tracking-wider mb-2">Progress</p>
-                  <div className="space-y-2">
-                    {latestWeeklyAi.analysis.progress?.map((item) => (
-                      <p key={item} className="text-sm t-text">✓ {item}</p>
+
+              {latestWeeklyAi.analysis.weekly_progress && (
+                <p className="text-sm t-text leading-relaxed">{latestWeeklyAi.analysis.weekly_progress}</p>
+              )}
+
+              {latestWeeklyAi.analysis.goal_progress && (
+                <div>
+                  <p className="text-[10px] t-muted uppercase tracking-wider font-semibold mb-1.5">Goal progress</p>
+                  <p className="text-sm t-muted leading-relaxed">{latestWeeklyAi.analysis.goal_progress}</p>
+                </div>
+              )}
+
+              {Boolean(latestWeeklyAi.analysis.nutrition_trends?.length) && (
+                <div>
+                  <p className="text-[10px] t-muted uppercase tracking-wider font-semibold mb-1.5">Nutrition trends</p>
+                  <div className="space-y-1.5">
+                    {latestWeeklyAi.analysis.nutrition_trends?.map((item) => (
+                      <p key={item} className="text-sm t-muted">↗ {item}</p>
                     ))}
                   </div>
                 </div>
               )}
-              {Boolean(latestWeeklyAi.analysis.focus_goals?.length) && (
-                <div className="mt-3">
-                  <p className="text-xs t-muted uppercase tracking-wider mb-2">Next week focus</p>
-                  <div className="space-y-2">
-                    {latestWeeklyAi.analysis.focus_goals?.map((item) => (
+
+              {Boolean(latestWeeklyAi.analysis.activity_trends?.length) && (
+                <div>
+                  <p className="text-[10px] t-muted uppercase tracking-wider font-semibold mb-1.5">Activity trends</p>
+                  <div className="space-y-1.5">
+                    {latestWeeklyAi.analysis.activity_trends?.map((item) => (
+                      <p key={item} className="text-sm t-muted">↗ {item}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {latestWeeklyAi.analysis.habit_score && (
+                <div>
+                  <p className="text-[10px] t-muted uppercase tracking-wider font-semibold mb-1.5">Habit score</p>
+                  <p className="text-sm t-muted leading-relaxed">{latestWeeklyAi.analysis.habit_score}</p>
+                </div>
+              )}
+
+              {latestWeeklyAi.analysis.best_meal && (
+                <div className="rounded-xl p-3" style={{ background: 'var(--accent-dim)', border: '1px solid var(--accent-border)' }}>
+                  <p className="text-[10px] t-accent uppercase tracking-wider font-semibold mb-1">Best meal of the week</p>
+                  <p className="text-sm t-text">{latestWeeklyAi.analysis.best_meal}</p>
+                </div>
+              )}
+
+              {Boolean(latestWeeklyAi.analysis.meal_suggestions?.length) && (
+                <div>
+                  <p className="text-[10px] t-muted uppercase tracking-wider font-semibold mb-1.5">Meal suggestions</p>
+                  <div className="space-y-1.5">
+                    {latestWeeklyAi.analysis.meal_suggestions?.map((item) => (
                       <p key={item} className="text-sm t-text">→ {item}</p>
                     ))}
                   </div>
                 </div>
+              )}
+
+              {Boolean(latestWeeklyAi.analysis.risks?.length) && (
+                <div className="rounded-xl p-3" style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}>
+                  <p className="text-[10px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: 'var(--amber)' }}>Risks to watch</p>
+                  <div className="space-y-1">
+                    {latestWeeklyAi.analysis.risks?.map((item) => (
+                      <p key={item} className="text-sm" style={{ color: 'var(--amber)' }}>⚠ {item}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {Boolean(latestWeeklyAi.analysis.personalized_recommendations?.length) && (
+                <div className="pt-1 border-t" style={{ borderColor: 'var(--border)' }}>
+                  <p className="text-[10px] t-accent uppercase tracking-wider font-semibold mb-1.5 mt-2">Focus for next week</p>
+                  <div className="space-y-1.5">
+                    {latestWeeklyAi.analysis.personalized_recommendations?.map((item) => (
+                      <p key={item} className="text-sm t-text">→ {item}</p>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {latestWeeklyAi.analysis.celebration && (
+                <p className="text-sm t-accent font-medium pt-1">🎉 {latestWeeklyAi.analysis.celebration}</p>
               )}
             </section>
           )}

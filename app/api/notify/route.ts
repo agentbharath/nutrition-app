@@ -113,7 +113,7 @@ async function buildAnalysisMessage(type: string) {
     const fallback = buildDailyFoodSummary(analysis)
     return {
       title: claudeReport.title || fallback.title,
-      body: claudeReport.summary || fallback.body,
+      body: claudeReport.overall_assessment || fallback.body,
       url: '/monitor',
       analyzedDays: 1,
     }
@@ -159,7 +159,7 @@ async function buildAnalysisMessage(type: string) {
     const fallback = buildWeeklySummary(days)
     return {
       title: claudeReport.title || fallback.title,
-      body: claudeReport.summary || fallback.body,
+      body: claudeReport.overall_assessment || fallback.body,
       url: '/monitor',
       analyzedDays: days.length,
     }

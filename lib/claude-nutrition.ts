@@ -3,14 +3,36 @@ import { TARGETS } from './meals'
 import { HealthDailyMetrics, compactHealthMetrics } from './health'
 
 export interface ClaudeNutritionReport {
+  // Core sections (daily)
   title: string
-  summary: string
-  positives: string[]
-  watch: string[]
-  next_actions: string[]
+  overall_assessment: string
+  biggest_wins: string[]
+  biggest_opportunities: string[]
+  food_analysis: string
+  recovery_analysis: string
+  pattern_detection: string[]
+  personalized_recommendations: string[]
+  food_flags?: string[]
+
+  // Weekly-specific sections
+  weekly_progress?: string
+  goal_progress?: string
+  nutrition_trends?: string[]
+  activity_trends?: string[]
+  habit_score?: string
+  best_meal?: string
+  meal_suggestions?: string[]
+  risks?: string[]
+  celebration?: string
+
+  // Legacy fields kept so old saved reports and any code still
+  // reading them do not break
+  summary?: string
+  positives?: string[]
+  watch?: string[]
+  next_actions?: string[]
   progress?: string[]
   focus_goals?: string[]
-  food_flags?: string[]
 }
 
 interface ClaudeTextBlock {
@@ -146,12 +168,13 @@ function compactAnalysis(analysis: FoodAnalysis) {
 function reportFallback(title: string, summary: string, analysis?: FoodAnalysis): ClaudeNutritionReport {
   return {
     title,
-    summary,
-    positives: analysis?.positives || [],
-    watch: analysis?.watch || [],
-    next_actions: analysis?.suggestions || [],
-    progress: [],
-    focus_goals: [],
+    overall_assessment: summary,
+    biggest_wins: analysis?.positives || [],
+    biggest_opportunities: analysis?.watch || [],
+    food_analysis: '',
+    recovery_analysis: '',
+    pattern_detection: [],
+    personalized_recommendations: analysis?.suggestions || [],
     food_flags: [],
   }
 }
@@ -178,14 +201,25 @@ function safeText(value: unknown): string {
 
 function normalizeReport(value: Partial<ClaudeNutritionReport>, fallback: ClaudeNutritionReport): ClaudeNutritionReport {
   return {
-    title: typeof value.title === 'string' ? value.title.slice(0, 80) : fallback.title,
-    summary: typeof value.summary === 'string' ? value.summary.slice(0, 500) : fallback.summary,
-    positives: Array.isArray(value.positives) ? value.positives.map(safeText).slice(0, 4) : fallback.positives,
-    watch: Array.isArray(value.watch) ? value.watch.map(safeText).slice(0, 4) : fallback.watch,
-    next_actions: Array.isArray(value.next_actions) ? value.next_actions.map(safeText).slice(0, 4) : fallback.next_actions,
-    progress: Array.isArray(value.progress) ? value.progress.map(safeText).slice(0, 4) : fallback.progress,
-    focus_goals: Array.isArray(value.focus_goals) ? value.focus_goals.map(safeText).slice(0, 4) : fallback.focus_goals,
+    title: typeof value.title === 'string' ? value.title.slice(0, 90) : fallback.title,
+    overall_assessment: typeof value.overall_assessment === 'string' ? value.overall_assessment.slice(0, 600) : fallback.overall_assessment,
+    biggest_wins: Array.isArray(value.biggest_wins) ? value.biggest_wins.map(safeText).slice(0, 4) : fallback.biggest_wins,
+    biggest_opportunities: Array.isArray(value.biggest_opportunities) ? value.biggest_opportunities.map(safeText).slice(0, 4) : fallback.biggest_opportunities,
+    food_analysis: typeof value.food_analysis === 'string' ? value.food_analysis.slice(0, 700) : fallback.food_analysis,
+    recovery_analysis: typeof value.recovery_analysis === 'string' ? value.recovery_analysis.slice(0, 600) : fallback.recovery_analysis,
+    pattern_detection: Array.isArray(value.pattern_detection) ? value.pattern_detection.map(safeText).slice(0, 5) : fallback.pattern_detection,
+    personalized_recommendations: Array.isArray(value.personalized_recommendations) ? value.personalized_recommendations.map(safeText).slice(0, 3) : fallback.personalized_recommendations,
     food_flags: Array.isArray(value.food_flags) ? value.food_flags.map(safeText).slice(0, 3) : fallback.food_flags,
+    // Weekly-only sections
+    weekly_progress: typeof value.weekly_progress === 'string' ? value.weekly_progress.slice(0, 600) : undefined,
+    goal_progress: typeof value.goal_progress === 'string' ? value.goal_progress.slice(0, 600) : undefined,
+    nutrition_trends: Array.isArray(value.nutrition_trends) ? value.nutrition_trends.map(safeText).slice(0, 5) : undefined,
+    activity_trends: Array.isArray(value.activity_trends) ? value.activity_trends.map(safeText).slice(0, 5) : undefined,
+    habit_score: typeof value.habit_score === 'string' ? value.habit_score.slice(0, 400) : undefined,
+    best_meal: typeof value.best_meal === 'string' ? value.best_meal.slice(0, 400) : undefined,
+    meal_suggestions: Array.isArray(value.meal_suggestions) ? value.meal_suggestions.map(safeText).slice(0, 3) : undefined,
+    risks: Array.isArray(value.risks) ? value.risks.map(safeText).slice(0, 4) : undefined,
+    celebration: typeof value.celebration === 'string' ? value.celebration.slice(0, 300) : undefined,
   }
 }
 
@@ -237,36 +271,41 @@ export async function generateDailyClaudeReport(
 ) {
   const fallback = reportFallback('Daily food analysis', analysis.headline, analysis)
   const prompt = [
-    'You are reasoning about what today actually DID to this person\'s body, not describing what they ate. Write a daily report with exactly this structure:',
+    'You are a coach explaining yesterday to this person — not a dashboard restating numbers. The app already shows them their calories, macros, meals, steps, and sleep. Your job is to explain WHY those numbers matter, what patterns are emerging, and what to actually do next. Write all narrative fields as flowing prose paragraphs, not bullet fragments.',
     '',
-    'VOICE: Write like a coach who actually looked at this specific person\'s day and noticed something, not a lab report. Use "you" naturally. Reference specific logged items by name (e.g. "that quinoa add at dinner", "the salmon rice bowl") and specific numbers when they tell a story (e.g. "134 active zone minutes", "1,341 kcal deficit") rather than only talking in vague categories like "protein" or "training load". Specificity is what makes this feel like it was actually read, not templated.',
+    'VOICE: Reference specific logged foods by name (e.g. "the salmon rice bowl", "that quinoa add at dinner") and specific numbers that tell a story (e.g. "134 active zone minutes"), not vague categories. Sound like a person who actually looked at this day, not a template.',
     '',
-    'TREND AWARENESS (important): You are given the last 5 days of totals alongside today. Use them. If today repeats a pattern from recent days (e.g. "third day this week over 200g protein", "sodium has stayed under 1300mg for 4 days straight", "this is the second calorie overage in 3 days"), say so explicitly — that is real information a single isolated day cannot show, and it is more valuable than restating today\'s numbers alone. If today is genuinely different from the recent pattern, say that instead. Do not skip this — comparing today against the recent days is what separates an actual read of the data from a templated recap.',
+    'TREND AWARENESS: You are given the last 5 days of totals. Use them to spot real patterns — "third day this week over 200g protein", "sodium has stayed under 1300mg for 4 days straight". This is what separates real analysis from a recap of one isolated day. If there is too little history to spot a pattern yet, say so briefly rather than inventing one.',
     '',
-    '1. TITLE: the net physiological direction of today in plain, human language — did the body move toward muscle preservation + fat loss, or away from it. Sound like a person said this, not a verdict stamp. Do not just preview the summary — make it earn a second sentence.',
+    'Produce these sections:',
     '',
-    '2. SUMMARY (<=55 words): Reason through this explicitly before writing: given the calorie balance (intake vs activity_calories/calories_out), protein relative to training stimulus, and active_zone_minutes/cardio_load from training, what is the actual likely effect on muscle tissue and fat stores today. Then connect it to the recent-days trend if relevant. Must say something the title did not already say — no redundant restating between title and summary.',
+    '1. title: A short, human verdict on the day — sound like a person said it, not a stamp.',
     '',
-    '3. food_flags (0-3 items, only if relevant): name the SPECIFIC food or quantity today that worked against the goal — by name, with the actual amount and why it matters for THIS goal. Empty array if nothing was actually a problem.',
+    '2. overall_assessment (2-3 sentences): Was yesterday a good day for the muscle-preservation + fat-loss goal? What was the single biggest success? What was the single biggest concern? This is the headline of the whole report — the rest of the sections support it.',
     '',
-    '4. watch (<=3 items): risks or compounding patterns worth tracking — explain the mechanism, referencing specific numbers and the recent-days trend where relevant, not just that it happened today.',
+    '3. biggest_wins (2-4 items): Specific things done well, each written as a full sentence that also explains WHY it helps the goal (not just "high protein" but what high protein against this training load actually does). Skip anything that is an easy default for this person — only genuine choices count.',
     '',
-    '5. positives (<=3 items): genuine wins that required an actual choice or effort, named specifically (which food, which choice). Skip anything that is an easy default for this person.',
+    '4. biggest_opportunities (1-3 items): Do NOT phrase these as criticism. For each: name what the opportunity is, explain why it matters and whether it actually affects progress, and state its priority in plain language (e.g. "this is a high-priority one" or "minor, not urgent"). Something like "protein is consistently higher than necessary" framed as low priority is a valid opportunity — not everything has to be a crisis.',
     '',
-    '6. next_actions (0-3 items, ranked, fewer is fine): the first item is the single most important lever given everything in this data, including the trend. Generic protocol reminders ("eat enough protein", "sleep more") are NOT a next_action unless something about TODAY or the recent trend specifically makes that the priority right now over everything else. If there is no real new lever beyond "keep doing what you are doing," say that plainly instead of inventing a directive.',
+    '5. food_analysis (one paragraph, not a macro list): Discuss which specific foods were excellent choices and why, which foods contributed most toward the goal, anything that added calories without much benefit, portion sizes worth noting, any missing food groups or low variety, and overall meal balance. Reference real items from today\'s log by name.',
+    '',
+    '6. recovery_analysis (one paragraph): Weave together activity, sleep, readiness, and training load into a single narrative about what the body needed and whether it got it — do not just list the numbers next to each other. Active zone minutes and cardio_load indicate real training stress, distinct from raw steps.',
+    '',
+    '7. pattern_detection (1-4 items): Patterns emerging across the recent days of data — protein trending high, sodium staying controlled, weekend fasting creating swings, activity increasing, sleep debt building, etc. If there is not yet enough history for a real pattern, say so plainly instead of manufacturing one.',
+    '',
+    '8. personalized_recommendations (2-3 items, ranked): Specific, concrete actions for today — not generic advice. "Prioritize an earlier bedtime tonight" beats "sleep more." If nutrition itself needs no change and the real lever is something else (recovery, timing, variety), say that plainly.',
+    '',
+    '9. food_flags (0-3 items, only if genuinely relevant): a specific food or quantity that worked against the goal, named with amount. Empty array if nothing was actually a problem — do not force one.',
     '',
     'HARD RULES:',
-    '- Never describe what happened without stating its physiological consequence. "You ate X, did Y steps" is not analysis — "X plus Y likely means Z for muscle/fat" is.',
-    '- Never critique how the user logs data (number of entries, app usage). Only critique what was eaten and in what amount.',
-    '- If health metrics show a notable signal (poor sleep, high cardio_load, low readiness, elevated resting heart rate) connect it causally to what the body needed today and whether nutrition met that need.',
-    '- If a day was genuinely fine with no real story, say so in one short sentence and do not manufacture drama.',
-    '- If previous weekly focus goals are present, state plainly whether today helped or hurt them.',
-    '- Every item in positives, watch, next_actions, and food_flags must be a single plain string sentence — never a nested object or key-value structure.',
+    '- Every list item must be a single plain string sentence — never a nested object.',
     '- Do not end with a question. This is a standalone report, not a conversation.',
-    '- The system has NO visibility into what type of day tomorrow will be (gym or rest) — that is chosen by the user each morning and is not available data. NEVER state "tomorrow is a rest day" or "tomorrow is a gym day" as fact, even if it seems like a likely pattern. If giving forward-looking advice, phrase it conditionally ("if tomorrow is a rest day...") or address recovery/sleep without assuming tomorrow\'s training status.',
-    '- The daily_targets in the user goal profile are the established, correct protocol, not a draft. NEVER suggest a different calorie number (higher or lower) than the locked rest-day or gym-day target based on a single day\'s data — no "recovery window," no refeed day, no generic sports-science advice about post-deficit calorie bumps. A single big deficit day with adequate protein is not a problem to be solved with more food. Only raise the possibility of a target change if the SAME issue repeats across 4+ consecutive logged days, and even then phrase it as worth reviewing, not as a new instruction to follow tomorrow.',
+    '- Never critique how the user logs data (number of entries, app usage). Only critique what was eaten and in what amount.',
+    '- The system has NO visibility into tomorrow\'s gym/rest status — never assert it as fact. Phrase forward-looking advice conditionally or focus on recovery without assuming training status.',
+    '- The daily_targets in the user goal profile are the established, correct protocol. NEVER suggest a different calorie number based on a single day\'s data — no "recovery window," no refeed day. Only raise a target review if the SAME issue repeats across 4+ consecutive days.',
+    '- If previous weekly focus goals are present, state plainly whether yesterday helped or hurt them.',
     '',
-    'Return JSON with keys: title, summary, positives, watch, next_actions, food_flags.',
+    'Return JSON with keys: title, overall_assessment, biggest_wins, biggest_opportunities, food_analysis, recovery_analysis, pattern_detection, personalized_recommendations, food_flags.',
     JSON.stringify({
       user_goal_profile: USER_GOAL_PROFILE,
       daily_log: compactAnalysis(analysis),
@@ -277,7 +316,7 @@ export async function generateDailyClaudeReport(
   ].join('\n')
 
   try {
-    return normalizeReport(await callClaude(prompt, 850), fallback)
+    return normalizeReport(await callClaude(prompt, 1400), fallback)
   } catch (error) {
     console.error(error)
     return fallback
@@ -295,14 +334,40 @@ export async function generateWeeklyClaudeReport(
     `${analyses.length} days analyzed. Review repeated sodium, protein, and fiber patterns.`,
   )
   const prompt = [
-    'Create a progressive weekly nutrition analysis from these separated daily logs.',
-    'Compare against the previous weekly report when present.',
-    'Return JSON with keys: title, summary, positives, watch, progress, focus_goals, next_actions.',
-    'Limits: summary <= 55 words; each array <= 3 short strings.',
-    'Focus on repeated food patterns, specific day-to-day differences, and whether the week supported belly/visceral fat loss while preserving muscle.',
-    'Use health metrics to connect food choices with activity, sleep, recovery, and body trend. Do not subtract calories_out from food calories.',
-    'The daily_targets in the user goal profile are the established, locked protocol. Do not propose a different calorie target casually. Only suggest reviewing the targets if the SAME deviation (over or under) shows up across most days this week — that is a genuine pattern worth surfacing. A single outlier day within the week is normal variance, not a signal.',
-    'The system has no visibility into future day types (gym vs rest) — never assert what an upcoming day will be, only reference what has already happened.',
+    'You are writing a weekly report focused on TRENDS, not individual days — the daily reports already covered each day. Write all narrative fields as flowing prose, not bullet fragments. Never write a raw average like "average calories = X" — always interpret what it means.',
+    '',
+    'Produce these sections:',
+    '',
+    '1. title: A short human verdict on the week.',
+    '',
+    '2. weekly_progress (2-3 sentences): The overall shape of the week in plain language — e.g. "excellent consistency despite one fasting day" — not a metrics recap.',
+    '',
+    '3. goal_progress (one paragraph): Discuss fat loss trajectory, weight trend, body fat trend, visceral fat, and muscle preservation using the body_snapshot in the user goal profile plus this week\'s data as supporting evidence.',
+    '',
+    '4. nutrition_trends (2-4 items): Protein consistency, fiber trend, sodium trend, food variety, meal adherence across the week — each as a real observation, not a single number.',
+    '',
+    '5. activity_trends (2-4 items): Activity level changes, recovery balance, workout consistency, rest day quality across the week.',
+    '',
+    '6. habit_score (1-2 sentences): Comment on logging consistency, meal planning, sleep consistency, and exercise adherence as a holistic read of the week\'s habits.',
+    '',
+    '7. best_meal (1-2 sentences): Pick one specific meal from the week that stood out and explain why — by name, with what made it a strong choice.',
+    '',
+    '8. meal_suggestions (1-3 items): Concrete, specific swaps — never generic ("eat more vegetables"). Instead something like "swap one protein shake this week for Greek yogurt and berries to add micronutrient variety while keeping protein high."',
+    '',
+    '9. risks (1-4 items, only if real): Possible risks visible in the data — overtraining, sleep debt, excessive protein crowding out variety, low healthy fats, low micronutrient variety, weekend overeating, undereating after workouts. Only include genuine signals from this week\'s actual data, not a generic checklist.',
+    '',
+    '10. celebration (1 sentence): Always end the week on something genuinely worth celebrating from this week\'s data.',
+    '',
+    '11. personalized_recommendations (2-3 items, ranked): The most important levers for next week specifically.',
+    '',
+    'HARD RULES:',
+    '- Every list item must be a single plain string sentence — never a nested object.',
+    '- Compare against the previous weekly report when present — state plainly whether last week\'s recommendations were followed through on.',
+    '- The daily_targets in the user goal profile are the established, locked protocol. Only suggest reviewing the targets if the SAME deviation shows up across MOST days this week — a single outlier day is normal variance, not a signal.',
+    '- The system has no visibility into future day types (gym vs rest) — never assert what an upcoming day will be.',
+    '- Use health metrics to connect food choices with activity, sleep, recovery, and body trend across the week. Do not subtract calories_out from food calories.',
+    '',
+    'Return JSON with keys: title, weekly_progress, goal_progress, nutrition_trends, activity_trends, habit_score, best_meal, meal_suggestions, risks, celebration, personalized_recommendations.',
     JSON.stringify({
       user_goal_profile: USER_GOAL_PROFILE,
       targets: TARGETS,
@@ -313,7 +378,7 @@ export async function generateWeeklyClaudeReport(
   ].join('\n')
 
   try {
-    return normalizeReport(await callClaude(prompt, 1000), fallback)
+    return normalizeReport(await callClaude(prompt, 1600), fallback)
   } catch (error) {
     console.error(error)
     return fallback
