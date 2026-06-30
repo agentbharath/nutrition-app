@@ -149,16 +149,29 @@ function extractJson(text: string) {
   return JSON.parse(text.slice(start, end + 1))
 }
 
+function safeText(value: unknown): string {
+  if (typeof value === 'string') return value
+  if (value && typeof value === 'object') {
+    // Claude sometimes returns {action: "...", reason: "..."} instead of a plain string —
+    // pull the most likely text field instead of producing "[object Object]"
+    const obj = value as Record<string, unknown>
+    const candidate = obj.action || obj.text || obj.item || obj.description || obj.value
+    if (typeof candidate === 'string') return candidate
+    return Object.values(obj).filter((v) => typeof v === 'string').join(' — ')
+  }
+  return String(value)
+}
+
 function normalizeReport(value: Partial<ClaudeNutritionReport>, fallback: ClaudeNutritionReport): ClaudeNutritionReport {
   return {
     title: typeof value.title === 'string' ? value.title.slice(0, 80) : fallback.title,
-    summary: typeof value.summary === 'string' ? value.summary.slice(0, 320) : fallback.summary,
-    positives: Array.isArray(value.positives) ? value.positives.map(String).slice(0, 4) : fallback.positives,
-    watch: Array.isArray(value.watch) ? value.watch.map(String).slice(0, 4) : fallback.watch,
-    next_actions: Array.isArray(value.next_actions) ? value.next_actions.map(String).slice(0, 4) : fallback.next_actions,
-    progress: Array.isArray(value.progress) ? value.progress.map(String).slice(0, 4) : fallback.progress,
-    focus_goals: Array.isArray(value.focus_goals) ? value.focus_goals.map(String).slice(0, 4) : fallback.focus_goals,
-    food_flags: Array.isArray(value.food_flags) ? value.food_flags.map(String).slice(0, 3) : fallback.food_flags,
+    summary: typeof value.summary === 'string' ? value.summary.slice(0, 500) : fallback.summary,
+    positives: Array.isArray(value.positives) ? value.positives.map(safeText).slice(0, 4) : fallback.positives,
+    watch: Array.isArray(value.watch) ? value.watch.map(safeText).slice(0, 4) : fallback.watch,
+    next_actions: Array.isArray(value.next_actions) ? value.next_actions.map(safeText).slice(0, 4) : fallback.next_actions,
+    progress: Array.isArray(value.progress) ? value.progress.map(safeText).slice(0, 4) : fallback.progress,
+    focus_goals: Array.isArray(value.focus_goals) ? value.focus_goals.map(safeText).slice(0, 4) : fallback.focus_goals,
+    food_flags: Array.isArray(value.food_flags) ? value.food_flags.map(safeText).slice(0, 3) : fallback.food_flags,
   }
 }
 
@@ -225,6 +238,7 @@ export async function generateDailyClaudeReport(analysis: FoodAnalysis, previous
     '- If health metrics show a notable signal (poor sleep, high cardio_load, low readiness, elevated resting heart rate) connect it causally to what the body needed today and whether nutrition met that need.',
     '- If a day was genuinely fine with no real story, say so in one short sentence and do not manufacture drama.',
     '- If previous weekly focus goals are present, state plainly whether today helped or hurt them.',
+    '- Every item in positives, watch, next_actions, and food_flags must be a single plain string sentence — never a nested object or key-value structure.',
     '',
     'Return JSON with keys: title, summary, positives, watch, next_actions, food_flags.',
     JSON.stringify({
