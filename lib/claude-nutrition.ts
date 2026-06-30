@@ -172,11 +172,13 @@ async function callClaude(prompt: string, maxTokens: number) {
     body: JSON.stringify({
       model: CLAUDE_MODEL,
       max_tokens: maxTokens,
-      temperature: 0.2,
+      temperature: 0.4,
       system: [
-        'You are a concise nutrition coach for one user.',
+        'You are a sharp, direct nutrition coach for one specific user whose full context you have.',
         'Use the provided macro math as truth. Do not invent foods.',
-        'Be practical, specific, and direct. This is wellness coaching, not medical advice.',
+        'Write like you actually read the data and formed an opinion — not like you are filling in a template with adjectives next to numbers.',
+        'Skip generic praise. If a target was hit, say so in one phrase and spend your words on what is actually interesting, risky, or worth changing.',
+        'This is wellness coaching, not medical advice.',
         'Return valid JSON only. No markdown.',
       ].join(' '),
       messages: [{ role: 'user', content: prompt }],
@@ -200,10 +202,19 @@ export function getClaudeModel() {
 export async function generateDailyClaudeReport(analysis: FoodAnalysis, previousWeekly?: unknown, healthMetrics?: HealthDailyMetrics | null) {
   const fallback = reportFallback('Daily food analysis', analysis.headline, analysis)
   const prompt = [
-    'Create a compact daily food analysis from this logged food.',
+    'Create a daily food analysis from this logged food. Write like a sharp coach who actually looked at the data, not a script that restates numbers with adjectives.',
     'Return JSON with keys: title, summary, positives, watch, next_actions.',
     'Limits: summary <= 45 words; each array <= 3 short strings.',
-    'If previous weekly focus goals are present, mention whether today helped or hurt them.',
+    '',
+    'HARD RULES — violating these makes the report useless:',
+    '- Never just restate a macro number with a generic adjective ("220g protects muscle"). State what it actually means for THIS day specifically.',
+    '- Find the one most interesting or concerning thing in the data — a pattern, a tradeoff, a contradiction, a risk — and lead with that, not a summary of all metrics.',
+    '- If something is genuinely fine, say so briefly and move on. Do not pad with filler praise for hitting an easy target.',
+    '- Reference specific foods or choices from the log when relevant, not just macro totals.',
+    '- If health metrics show something notable (poor sleep, high strain, low steps) connect it causally to the food day — do not just list both side by side.',
+    '- next_actions must be concrete and specific to tomorrow/this week, not generic advice ("eat more protein").',
+    '',
+    'If previous weekly focus goals are present, state plainly whether today helped or hurt them — do not hedge.',
     'Use health metrics as activity, sleep, recovery, and body trend context. Do not subtract calories_out from food calories.',
     'Use the user goal profile as the coaching frame for belly/visceral fat loss and muscle preservation.',
     JSON.stringify({
