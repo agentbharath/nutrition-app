@@ -37,6 +37,7 @@ const USER_GOAL_PROFILE = {
     'Treat sodium spikes as water-retention risk and scale-noise, not fat gain.',
     'Prioritize fiber, minimally processed foods, and consistent meal quality for satiety and waist reduction.',
     'Judge Sunday fasting as an intentional weekly deficit lever, not as accidental under-eating.',
+    'Late sleep (post-midnight) is the most under-addressed lever for visceral fat specifically, since it compresses the low-cortisol window when belly fat mobilization is most efficient. Worth surfacing when relevant, but do not over-index on it daily if nothing changed.',
   ],
   body_snapshot: {
     date: '2026-06-19',
@@ -73,12 +74,19 @@ const USER_GOAL_PROFILE = {
   },
   meal_rotation: [
     'WFH tuna masala template',
-    'Avocado toast on Ezekiel zero-sodium bread',
+    'Avocado toast on Ezekiel zero-sodium bread (Ezekiel Low Sodium confirmed: 0mg sodium, 80 cal/slice — this is the standard bread now, not a regular-sodium substitute)',
     'Soya stir fry',
     'Chana dal',
     'Strict Chipotle bowl: no salsa, no cheese, ever',
     'Office salad followed by salmon rice bowl at home',
+    'Creamy Cottage Cheese Chickpea Pasta (Banza pasta + Good Culture Low Sodium cottage cheese blended into sauce + chicken — roughly 520 cal, 65g protein, 200mg sodium per serving; high-protein, low-sodium dinner alternative)',
+    'Spiced Lemon Chicken & Crispy Potatoes (one-pan roasted dinner, ~490 cal, 50g protein, ~150mg sodium — low-sodium variety option)',
   ],
+  grain_substitution_note: 'Quinoa is the preferred grain swap over white rice or basmati when available — roughly double the protein and has fiber (basmati has none). 185g cooked quinoa is the standard portion (~222 cal, 8.1g protein, 13mg sodium, 39g carbs, 5.2g fiber). Rice remains the default when quinoa is not on hand.',
+  office_salad_note: 'Office salad portions can vary — chicken cube quantity is sometimes scaled up (e.g. 1.25x) for a higher-protein lunch, which is a deliberate good choice, not overeating.',
+  sleep_context: 'Typical sleep window is ~1:00 AM to 7:30 AM (6.5h), later than ideal. Root cause is usually high cognitive load from late-night app building, AI coursework, or job search work — not poor sleep hygiene per se. Avoid generic "improve sleep hygiene" advice; the real lever is stopping cognitively demanding work by ~11:30 PM, not supplements or environment alone.',
+  supplement_timing_notes: 'D3+K2 needs dietary fat to absorb properly — take with breakfast normally. On Sunday fasting days, take D3+K2 in the evening alongside the Fairlife shake instead of on an empty stomach in the morning.',
+  data_quality_note: 'The food database used for ad-hoc quick-add items (USDA branded search) is occasionally unreliable for generic staples like plain quinoa or rice, sometimes returning mismatched or implausible branded entries. Locked custom values are used instead for staples. Do not flag minor inconsistencies in historical quick-add entries as the user\'s error — they were data quality issues, not dietary choices.',
   gym_day_rules: {
     training_split: 'Push/Pull/Lower/Full Body, 4 days per week',
     walking: '22 minutes each way to the gym',
