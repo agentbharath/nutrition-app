@@ -10,6 +10,7 @@ export interface ClaudeNutritionReport {
   next_actions: string[]
   progress?: string[]
   focus_goals?: string[]
+  food_flags?: string[]
 }
 
 interface ClaudeTextBlock {
@@ -137,6 +138,7 @@ function reportFallback(title: string, summary: string, analysis?: FoodAnalysis)
     next_actions: analysis?.suggestions || [],
     progress: [],
     focus_goals: [],
+    food_flags: [],
   }
 }
 
@@ -156,6 +158,7 @@ function normalizeReport(value: Partial<ClaudeNutritionReport>, fallback: Claude
     next_actions: Array.isArray(value.next_actions) ? value.next_actions.map(String).slice(0, 4) : fallback.next_actions,
     progress: Array.isArray(value.progress) ? value.progress.map(String).slice(0, 4) : fallback.progress,
     focus_goals: Array.isArray(value.focus_goals) ? value.focus_goals.map(String).slice(0, 4) : fallback.focus_goals,
+    food_flags: Array.isArray(value.food_flags) ? value.food_flags.map(String).slice(0, 3) : fallback.food_flags,
   }
 }
 
@@ -202,21 +205,21 @@ export function getClaudeModel() {
 export async function generateDailyClaudeReport(analysis: FoodAnalysis, previousWeekly?: unknown, healthMetrics?: HealthDailyMetrics | null) {
   const fallback = reportFallback('Daily food analysis', analysis.headline, analysis)
   const prompt = [
-    'Create a daily food analysis from this logged food. Write like a sharp coach who actually looked at the data, not a script that restates numbers with adjectives.',
-    'Return JSON with keys: title, summary, positives, watch, next_actions.',
-    'Limits: summary <= 45 words; each array <= 3 short strings.',
+    'Write a daily report with exactly this structure — these are not suggestions, they are the spec:',
     '',
-    'HARD RULES — violating these makes the report useless:',
-    '- Never just restate a macro number with a generic adjective ("220g protects muscle"). State what it actually means for THIS day specifically.',
-    '- Find the one most interesting or concerning thing in the data — a pattern, a tradeoff, a contradiction, a risk — and lead with that, not a summary of all metrics.',
-    '- If something is genuinely fine, say so briefly and move on. Do not pad with filler praise for hitting an easy target.',
-    '- Reference specific foods or choices from the log when relevant, not just macro totals.',
-    '- If health metrics show something notable (poor sleep, high strain, low steps) connect it causally to the food day — do not just list both side by side.',
-    '- next_actions must be concrete and specific to tomorrow/this week, not generic advice ("eat more protein").',
+    '1. TITLE: one plain-spoken verdict on whether today moved the user toward or away from the goal. Not a summary of metrics.',
+    '2. SUMMARY (<=45 words): the single most important insight a sharp human coach watching this data would say out loud. Not a recap of all five macros. Pick the one thing that actually matters.',
+    '3. food_flags (0-3 items, only if relevant): name the SPECIFIC food or quantity today that worked against the goal — by name, with the actual amount and why it matters for THIS goal (belly fat / muscle preservation), not a generic warning. If nothing was actually a problem, return an empty array — do not invent a flag to fill the slot.',
+    '4. watch (<=3 items): risks or patterns worth tracking, can reference the rule-based watch list but explain WHY each one matters for this specific goal, not just restate it.',
+    '5. positives (<=3 items): genuine wins only. Skip anything that was an easy default (e.g. hitting protein when protein is always high). Only include something here if it required an actual choice or effort.',
+    '6. next_actions (<=3 items, ranked): the FIRST item must be the single most important thing to do given everything in this data — be specific and concrete, not generic advice. The rest are secondary.',
     '',
-    'If previous weekly focus goals are present, state plainly whether today helped or hurt them — do not hedge.',
-    'Use health metrics as activity, sleep, recovery, and body trend context. Do not subtract calories_out from food calories.',
-    'Use the user goal profile as the coaching frame for belly/visceral fat loss and muscle preservation.',
+    'If health metrics are present, only mention them where they CAUSALLY explain something in the food day — bad sleep affecting hunger/cravings, high strain justifying a surplus, low recovery meaning today carbs were earned. Do not just list health numbers next to food numbers with no connection.',
+    'If previous weekly focus goals are present, state plainly whether today helped or hurt them — no hedging.',
+    'Reference specific logged foods by name when explaining a flag or insight. Use the user goal profile as the coaching frame throughout — belly/visceral fat loss without losing muscle.',
+    'Do not pad. If a day was simply fine with nothing notable, say that briefly and move on rather than manufacturing insight.',
+    '',
+    'Return JSON with keys: title, summary, positives, watch, next_actions, food_flags.',
     JSON.stringify({
       user_goal_profile: USER_GOAL_PROFILE,
       daily_log: compactAnalysis(analysis),
@@ -226,7 +229,7 @@ export async function generateDailyClaudeReport(analysis: FoodAnalysis, previous
   ].join('\n')
 
   try {
-    return normalizeReport(await callClaude(prompt, 700), fallback)
+    return normalizeReport(await callClaude(prompt, 800), fallback)
   } catch (error) {
     console.error(error)
     return fallback

@@ -205,6 +205,16 @@ export default function MonitorPage() {
                     <p className="text-[10px] t-muted text-right">{selectedDailyAi.model}</p>
                   </div>
                   <p className="text-sm t-muted mt-2">{selectedDailyAi.analysis.summary}</p>
+                  {Boolean(selectedDailyAi.analysis.food_flags?.length) && (
+                    <div className="mt-3 rounded-xl p-3" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)' }}>
+                      <p className="text-[10px] uppercase tracking-wider font-semibold mb-1.5" style={{ color: 'var(--red)' }}>Food flags</p>
+                      <div className="space-y-1">
+                        {selectedDailyAi.analysis.food_flags?.map((item) => (
+                          <p key={item} className="text-sm" style={{ color: 'var(--red)' }}>⚠ {item}</p>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                   {Boolean(selectedDailyAi.analysis.next_actions?.length) && (
                     <div className="mt-3 space-y-1.5">
                       {selectedDailyAi.analysis.next_actions?.map((item) => (
