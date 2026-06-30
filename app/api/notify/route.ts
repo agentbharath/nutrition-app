@@ -80,7 +80,26 @@ async function buildAnalysisMessage(type: string) {
     const analysis = analyzeFoodDay(log, quickAdds || [])
     const previousWeekly = await getPreviousWeeklyReport(date)
     const healthMetrics = (await getHealthMetricsForDates([date]))[0] || null
-    const claudeReport = await generateDailyClaudeReport(analysis, previousWeekly, healthMetrics)
+
+    // Pull the prior 5 days so the daily report can spot real trends
+    // (repeated patterns, drift, streaks) instead of reasoning about
+    // today in total isolation every single time.
+    const recentDates: string[] = []
+    for (let i = 1; i <= 5; i++) recentDates.push(getPacificDate(-1 - i))
+    const { data: recentLogs } = await supabase
+      .from('daily_logs')
+      .select('*')
+      .in('date', recentDates)
+      .returns<DailyLog[]>()
+    const recentQuickAdds = await getQuickAddsForDates(recentDates)
+    const recentDaysTrend = (recentLogs || [])
+      .sort((a, b) => a.date.localeCompare(b.date))
+      .map((l) => {
+        const a = analyzeFoodDay(l, recentQuickAdds || [])
+        return { date: a.date, day: a.dayName, totals: a.totals }
+      })
+
+    const claudeReport = await generateDailyClaudeReport(analysis, previousWeekly, healthMetrics, recentDaysTrend)
 
     await saveAiReport({
       report_type: 'daily',

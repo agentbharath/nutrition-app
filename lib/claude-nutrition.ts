@@ -229,24 +229,31 @@ export function getClaudeModel() {
   return CLAUDE_MODEL
 }
 
-export async function generateDailyClaudeReport(analysis: FoodAnalysis, previousWeekly?: unknown, healthMetrics?: HealthDailyMetrics | null) {
+export async function generateDailyClaudeReport(
+  analysis: FoodAnalysis,
+  previousWeekly?: unknown,
+  healthMetrics?: HealthDailyMetrics | null,
+  recentDaysTrend?: Array<{ date: string; day: string; totals: unknown }>
+) {
   const fallback = reportFallback('Daily food analysis', analysis.headline, analysis)
   const prompt = [
     'You are reasoning about what today actually DID to this person\'s body, not describing what they ate. Write a daily report with exactly this structure:',
     '',
     'VOICE: Write like a coach who actually looked at this specific person\'s day and noticed something, not a lab report. Use "you" naturally. Reference specific logged items by name (e.g. "that quinoa add at dinner", "the salmon rice bowl") and specific numbers when they tell a story (e.g. "134 active zone minutes", "1,341 kcal deficit") rather than only talking in vague categories like "protein" or "training load". Specificity is what makes this feel like it was actually read, not templated.',
     '',
-    '1. TITLE: the net physiological direction of today in plain, human language — did the body move toward muscle preservation + fat loss, or away from it. Sound like a person said this, not a verdict stamp.',
+    'TREND AWARENESS (important): You are given the last 5 days of totals alongside today. Use them. If today repeats a pattern from recent days (e.g. "third day this week over 200g protein", "sodium has stayed under 1300mg for 4 days straight", "this is the second calorie overage in 3 days"), say so explicitly — that is real information a single isolated day cannot show, and it is more valuable than restating today\'s numbers alone. If today is genuinely different from the recent pattern, say that instead. Do not skip this — comparing today against the recent days is what separates an actual read of the data from a templated recap.',
     '',
-    '2. SUMMARY (<=50 words): Reason through this explicitly before writing: given the calorie balance (intake vs activity_calories/calories_out), protein relative to training stimulus, and active_zone_minutes/cardio_load from training, what is the actual likely effect on muscle tissue and fat stores today — gained ground, held steady, or lost ground, and on which axis (muscle vs fat) specifically. Active zone minutes indicate real cardiovascular training stress, not just movement. State the verdict using specific numbers and specific foods from today, not generic category names.',
+    '1. TITLE: the net physiological direction of today in plain, human language — did the body move toward muscle preservation + fat loss, or away from it. Sound like a person said this, not a verdict stamp. Do not just preview the summary — make it earn a second sentence.',
+    '',
+    '2. SUMMARY (<=55 words): Reason through this explicitly before writing: given the calorie balance (intake vs activity_calories/calories_out), protein relative to training stimulus, and active_zone_minutes/cardio_load from training, what is the actual likely effect on muscle tissue and fat stores today. Then connect it to the recent-days trend if relevant. Must say something the title did not already say — no redundant restating between title and summary.',
     '',
     '3. food_flags (0-3 items, only if relevant): name the SPECIFIC food or quantity today that worked against the goal — by name, with the actual amount and why it matters for THIS goal. Empty array if nothing was actually a problem.',
     '',
-    '4. watch (<=3 items): risks or compounding patterns worth tracking — explain the mechanism, referencing specific numbers, not just that it happened.',
+    '4. watch (<=3 items): risks or compounding patterns worth tracking — explain the mechanism, referencing specific numbers and the recent-days trend where relevant, not just that it happened today.',
     '',
     '5. positives (<=3 items): genuine wins that required an actual choice or effort, named specifically (which food, which choice). Skip anything that is an easy default for this person.',
     '',
-    '6. next_actions (0-3 items, ranked, fewer is fine): the first item is the single most important lever given everything in this data. Only add more if they are genuinely distinct real levers — never pad to reach 3.',
+    '6. next_actions (0-3 items, ranked, fewer is fine): the first item is the single most important lever given everything in this data, including the trend. Generic protocol reminders ("eat enough protein", "sleep more") are NOT a next_action unless something about TODAY or the recent trend specifically makes that the priority right now over everything else. If there is no real new lever beyond "keep doing what you are doing," say that plainly instead of inventing a directive.',
     '',
     'HARD RULES:',
     '- Never describe what happened without stating its physiological consequence. "You ate X, did Y steps" is not analysis — "X plus Y likely means Z for muscle/fat" is.',
@@ -262,6 +269,7 @@ export async function generateDailyClaudeReport(analysis: FoodAnalysis, previous
     JSON.stringify({
       user_goal_profile: USER_GOAL_PROFILE,
       daily_log: compactAnalysis(analysis),
+      recent_days_trend: recentDaysTrend || [],
       health_metrics: compactHealthMetrics(healthMetrics),
       previous_weekly_report: previousWeekly || null,
     }),
