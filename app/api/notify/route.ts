@@ -6,6 +6,10 @@ import { QuickAddEntry, analyzeFoodDay, buildDailyFoodSummary, buildWeeklySummar
 import { DailyLog, NutritionAiReport } from '@/lib/supabase'
 import { getHealthMetricsForDates, healthIntegrationConfigured, syncRecentHealthDays } from '@/lib/health'
 
+// Hobby plan defaults to 10s timeout — Claude API analysis + health sync
+// routinely takes longer than that. This raises it to the Hobby max (60s).
+export const maxDuration = 60
+
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
