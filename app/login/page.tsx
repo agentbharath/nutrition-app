@@ -6,7 +6,9 @@ export default function LoginPage() {
   const [email, setEmail] = useState('')
   const [name, setName] = useState('')
   const [sent, setSent] = useState(false)
+  const [code, setCode] = useState('')
   const [loading, setLoading] = useState(false)
+  const [verifying, setVerifying] = useState(false)
   const [error, setError] = useState('')
 
   async function handleSubmit(e: React.FormEvent) {
@@ -18,7 +20,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim(),
       options: {
-        emailRedirectTo: typeof window !== 'undefined' ? window.location.origin : undefined,
+        shouldCreateUser: true,
         data: name.trim() ? { display_name: name.trim() } : undefined,
       },
     })
@@ -29,6 +31,25 @@ export default function LoginPage() {
       setSent(true)
     }
     setLoading(false)
+  }
+
+  async function handleVerify(e: React.FormEvent) {
+    e.preventDefault()
+    if (code.trim().length < 6) return
+    setVerifying(true)
+    setError('')
+
+    const { error } = await supabase.auth.verifyOtp({
+      email: email.trim(),
+      token: code.trim(),
+      type: 'email',
+    })
+
+    if (error) {
+      setError(error.message)
+      setVerifying(false)
+    }
+    // On success, the auth listener in AuthProvider picks up the session automatically
   }
 
   return (
@@ -69,21 +90,45 @@ export default function LoginPage() {
               disabled={loading || !email.trim()}
               className="w-full btn-confirm font-bold rounded-xl py-3.5 text-sm disabled:opacity-50"
             >
-              {loading ? 'Sending...' : '✉️ Send Magic Link'}
+              {loading ? 'Sending...' : '✉️ Send Sign-in Code'}
             </button>
           </form>
         ) : (
-          <div className="text-center">
-            <p className="text-4xl mb-3">📬</p>
-            <p className="text-sm t-text font-medium">Check your email</p>
-            <p className="text-xs t-muted mt-2">We sent a sign-in link to {email}. Click it to open the app.</p>
+          <form onSubmit={handleVerify} className="space-y-3">
+            <div className="text-center mb-4">
+              <p className="text-4xl mb-2">📬</p>
+              <p className="text-sm t-text font-medium">Check your email</p>
+              <p className="text-xs t-muted mt-1">We sent a 6-digit code to {email}. Enter it below — don&apos;t tap any link in the email, just type the code here.</p>
+            </div>
+            <div>
+              <label className="text-xs t-muted uppercase tracking-wider">6-digit code</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                maxLength={6}
+                autoFocus
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, ''))}
+                placeholder="123456"
+                className="mt-1 w-full t-input rounded-xl px-4 py-3 text-center text-2xl tracking-[0.3em] font-bold"
+              />
+            </div>
+            {error && <p className="text-xs" style={{ color: 'var(--red)' }}>{error}</p>}
             <button
-              onClick={() => setSent(false)}
-              className="text-xs t-accent mt-4 underline"
+              type="submit"
+              disabled={verifying || code.length < 6}
+              className="w-full btn-confirm font-bold rounded-xl py-3.5 text-sm disabled:opacity-50"
+            >
+              {verifying ? 'Verifying...' : '✓ Verify & Sign In'}
+            </button>
+            <button
+              type="button"
+              onClick={() => { setSent(false); setCode(''); setError('') }}
+              className="w-full text-xs t-muted underline"
             >
               Use a different email
             </button>
-          </div>
+          </form>
         )}
       </div>
     </main>
