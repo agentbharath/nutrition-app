@@ -54,10 +54,16 @@ const USER_GOAL_PROFILE = {
     trend_note: 'Down from 74.70kg and about 21% body fat roughly 3 weeks earlier; protocol is already working.',
   },
   daily_targets: {
-    calories_kcal: 1800,
+    calories_kcal_rest_day: 1800,
+    calories_kcal_gym_day: '1850-1900',
     protein_g_min: 140,
     sodium_mg_max: 1500,
+    sodium_mg_max_gym_day: 1700,
     fiber_g_min: 25,
+    carbs_g_range_rest_day: '150-200',
+    carbs_g_range_gym_day: '180-220',
+    is_locked: true,
+    locked_rule: 'These targets are the established, already-correct protocol — not a starting suggestion. NEVER recommend a different calorie target (higher or lower) based on a single day of data, one bad sleep night, or one big deficit day. One day outside the normal range is not a crisis and does not justify a "recovery window" with higher calories, a refeed, or any deviation from these exact numbers. Only flag a possible need for protocol adjustment if a clear pattern repeats across 4+ consecutive days, and even then frame it as "worth discussing," never as a unilateral new target.',
   },
   fixed_breakfast: {
     name: 'Breakfast bowl',
@@ -242,6 +248,7 @@ export async function generateDailyClaudeReport(analysis: FoodAnalysis, previous
     '- If previous weekly focus goals are present, state plainly whether today helped or hurt them.',
     '- Every item in positives, watch, next_actions, and food_flags must be a single plain string sentence — never a nested object or key-value structure.',
     '- Do not end with a question. This is a standalone report, not a conversation.',
+    '- The daily_targets in the user goal profile are the established, correct protocol, not a draft. NEVER suggest a different calorie number (higher or lower) than the locked rest-day or gym-day target based on a single day\'s data — no "recovery window," no refeed day, no generic sports-science advice about post-deficit calorie bumps. A single big deficit day with adequate protein is not a problem to be solved with more food. Only raise the possibility of a target change if the SAME issue repeats across 4+ consecutive logged days, and even then phrase it as worth reviewing, not as a new instruction to follow tomorrow.',
     '',
     'Return JSON with keys: title, summary, positives, watch, next_actions, food_flags.',
     JSON.stringify({
@@ -277,6 +284,7 @@ export async function generateWeeklyClaudeReport(
     'Limits: summary <= 55 words; each array <= 3 short strings.',
     'Focus on repeated food patterns, specific day-to-day differences, and whether the week supported belly/visceral fat loss while preserving muscle.',
     'Use health metrics to connect food choices with activity, sleep, recovery, and body trend. Do not subtract calories_out from food calories.',
+    'The daily_targets in the user goal profile are the established, locked protocol. Do not propose a different calorie target casually. Only suggest reviewing the targets if the SAME deviation (over or under) shows up across most days this week — that is a genuine pattern worth surfacing. A single outlier day within the week is normal variance, not a signal.',
     JSON.stringify({
       user_goal_profile: USER_GOAL_PROFILE,
       targets: TARGETS,
