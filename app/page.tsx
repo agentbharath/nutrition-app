@@ -491,7 +491,25 @@ export default function Home() {
           onClose={() => setShowBreakfastOverride(false)}
         />
       )}
-      {showQuickAdd && <QuickAdd onAdd={handleQuickAdd} onClose={() => setShowQuickAdd(false)} />}
+      {showQuickAdd && (
+        <div className="fixed inset-0 z-50 flex flex-col justify-end">
+          {/* Backdrop */}
+          <div className="absolute inset-0 bg-black/50" onClick={() => setShowQuickAdd(false)} />
+          {/* Sheet */}
+          <div className="relative rounded-t-2xl shadow-2xl max-h-[85vh] flex flex-col" style={{ background: 'var(--bg)' }}>
+            {/* Handle + header */}
+            <div className="flex items-center justify-between px-4 pt-3 pb-2 shrink-0">
+              <div className="w-8 h-1 rounded-full mx-auto" style={{ background: 'var(--border2)', position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: 12 }} />
+              <p className="font-semibold text-sm t-text">Quick Add</p>
+              <button onClick={() => setShowQuickAdd(false)} className="text-xl t-muted leading-none">✕</button>
+            </div>
+            {/* Scrollable content */}
+            <div className="overflow-y-auto px-4 pb-8 flex-1">
+              <QuickAdd onAdd={handleQuickAdd} onClose={() => setShowQuickAdd(false)} />
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }
