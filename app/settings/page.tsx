@@ -40,6 +40,8 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(false)
   const [testLoading, setTestLoading] = useState(false)
   const [testStatus, setTestStatus] = useState('')
+  const [analysisLoading, setAnalysisLoading] = useState(false)
+  const [analysisStatus, setAnalysisStatus] = useState('')
   const [resetLoading, setResetLoading] = useState(false)
   const [resetDone, setResetDone] = useState(false)
   const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null)
@@ -126,6 +128,25 @@ export default function SettingsPage() {
       setTestStatus('Could not send test.')
     } finally {
       setTestLoading(false)
+    }
+  }
+
+  async function runAnalysisNow() {
+    setAnalysisLoading(true)
+    setAnalysisStatus('')
+    try {
+      const res = await fetch('/api/analysis/run-now', { method: 'POST' })
+      const data = await res.json()
+      if (res.ok) {
+        setAnalysisStatus('✓ Report generated — check the Analysis tab.')
+      } else {
+        setAnalysisStatus(data.error || 'Could not generate report.')
+      }
+    } catch (e) {
+      console.error(e)
+      setAnalysisStatus('Could not generate report.')
+    } finally {
+      setAnalysisLoading(false)
     }
   }
 
@@ -395,6 +416,15 @@ export default function SettingsPage() {
               {testStatus && <p className="text-xs t-muted">{testStatus}</p>}
             </div>
           )}
+
+          <button
+            onClick={runAnalysisNow}
+            disabled={analysisLoading}
+            className="mt-3 w-full btn-confirm disabled:opacity-50 rounded-xl py-2.5 text-xs font-semibold"
+          >
+            {analysisLoading ? 'Generating report (~10-20s)...' : '🧠 Run Today\'s Claude Report Now'}
+          </button>
+          {analysisStatus && <p className="text-xs t-muted mt-1">{analysisStatus}</p>}
         </div>
 
         {/* TARGETS */}
