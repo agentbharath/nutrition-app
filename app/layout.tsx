@@ -1,10 +1,11 @@
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
 import { ThemeProvider } from '@/lib/theme'
+import { AuthProvider } from '@/lib/auth'
 
 export const metadata: Metadata = {
-  title: 'Bharath Nutrition',
-  description: 'Daily nutrition tracker — 1800 cal | 140g protein | <1500mg sodium',
+  title: 'Nutrition Tracker',
+  description: 'Daily nutrition tracker — track calories, protein, sodium, and more',
   manifest: '/manifest.json',
   appleWebApp: { capable: true, statusBarStyle: 'black-translucent', title: 'Nutrition' },
 }
@@ -24,7 +25,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="min-h-screen font-sans antialiased transition-colors duration-300" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
         <ThemeProvider>
-          {children}
+          <AuthProvider>
+            {children}
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

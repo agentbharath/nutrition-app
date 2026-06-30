@@ -137,7 +137,7 @@ export default function Home() {
       cal_total: totals.cal, protein_total: totals.protein,
       sodium_total: totals.sodium, fiber_total: totals.fiber, carbs_total: totals.carbs,
       meal_customizations: {},
-    }, { onConflict: 'date' }).select().single()
+    }, { onConflict: 'user_id,date' }).select().single()
     setLog(data); setShowDaySelector(false); setSaving(false)
   }
 
