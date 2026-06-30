@@ -263,6 +263,7 @@ export async function generateDailyClaudeReport(
     '- If previous weekly focus goals are present, state plainly whether today helped or hurt them.',
     '- Every item in positives, watch, next_actions, and food_flags must be a single plain string sentence — never a nested object or key-value structure.',
     '- Do not end with a question. This is a standalone report, not a conversation.',
+    '- The system has NO visibility into what type of day tomorrow will be (gym or rest) — that is chosen by the user each morning and is not available data. NEVER state "tomorrow is a rest day" or "tomorrow is a gym day" as fact, even if it seems like a likely pattern. If giving forward-looking advice, phrase it conditionally ("if tomorrow is a rest day...") or address recovery/sleep without assuming tomorrow\'s training status.',
     '- The daily_targets in the user goal profile are the established, correct protocol, not a draft. NEVER suggest a different calorie number (higher or lower) than the locked rest-day or gym-day target based on a single day\'s data — no "recovery window," no refeed day, no generic sports-science advice about post-deficit calorie bumps. A single big deficit day with adequate protein is not a problem to be solved with more food. Only raise the possibility of a target change if the SAME issue repeats across 4+ consecutive logged days, and even then phrase it as worth reviewing, not as a new instruction to follow tomorrow.',
     '',
     'Return JSON with keys: title, summary, positives, watch, next_actions, food_flags.',
@@ -301,6 +302,7 @@ export async function generateWeeklyClaudeReport(
     'Focus on repeated food patterns, specific day-to-day differences, and whether the week supported belly/visceral fat loss while preserving muscle.',
     'Use health metrics to connect food choices with activity, sleep, recovery, and body trend. Do not subtract calories_out from food calories.',
     'The daily_targets in the user goal profile are the established, locked protocol. Do not propose a different calorie target casually. Only suggest reviewing the targets if the SAME deviation (over or under) shows up across most days this week — that is a genuine pattern worth surfacing. A single outlier day within the week is normal variance, not a signal.',
+    'The system has no visibility into future day types (gym vs rest) — never assert what an upcoming day will be, only reference what has already happened.',
     JSON.stringify({
       user_goal_profile: USER_GOAL_PROFILE,
       targets: TARGETS,
