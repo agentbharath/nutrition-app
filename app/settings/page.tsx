@@ -42,6 +42,18 @@ export default function SettingsPage() {
   const [testStatus, setTestStatus] = useState('')
   const [analysisLoading, setAnalysisLoading] = useState(false)
   const [analysisStatus, setAnalysisStatus] = useState('')
+  const [analysisAlreadyDone, setAnalysisAlreadyDone] = useState(false)
+
+  // Check if report already exists for yesterday (the report always covers yesterday)
+  useEffect(() => {
+    const yesterday = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
+    yesterday.setDate(yesterday.getDate() - 1)
+    const yDate = yesterday.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
+    supabase.from('nutrition_ai_reports')
+      .select('id').eq('report_type', 'daily').eq('period_end', yDate)
+      .maybeSingle()
+      .then(({ data }) => { if (data) setAnalysisAlreadyDone(true) })
+  }, [])
   const [resetLoading, setResetLoading] = useState(false)
   const [resetDone, setResetDone] = useState(false)
   const [healthStatus, setHealthStatus] = useState<HealthStatus | null>(null)
@@ -139,6 +151,7 @@ export default function SettingsPage() {
       const data = await res.json()
       if (res.ok) {
         setAnalysisStatus('✓ Report generated — check the Analysis tab.')
+        setAnalysisAlreadyDone(true)
       } else {
         setAnalysisStatus(data.error || 'Could not generate report.')
       }
@@ -373,56 +386,16 @@ export default function SettingsPage() {
           )}
         </div>
 
-                {/* NOTIFICATIONS */}
+                {/* CLAUDE REPORT */}
         <div className="t-card rounded-2xl p-4">
-          <p className="font-semibold text-sm t-text mb-0.5">Push Notifications</p>
-          <p className="text-xs t-muted mb-3">12 PM lunch • 6 PM dinner • 12 AM daily recap • weekly report</p>
-          {notifStatus === 'unsupported' && (
-            <div className="rounded-xl p-3" style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)' }}>
-              <p className="text-xs" style={{ color: 'var(--amber)' }}>⚠️ Install app to home screen first, then enable notifications here</p>
-            </div>
-          )}
-          {notifStatus === 'denied' && (
-            <div className="rounded-xl p-3" style={{ background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)' }}>
-              <p className="text-xs" style={{ color: 'var(--red)' }}>🚫 Blocked — go to browser Settings → Notifications → Allow for this site</p>
-            </div>
-          )}
-          {(notifStatus === 'unknown' || notifStatus === 'granted') && (
-            <button onClick={subscribed ? disableNotifications : enableNotifications} disabled={loading}
-              className="w-full py-3 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
-              style={subscribed ? { background: 'rgba(239,68,68,0.1)', color: 'var(--red)', border: '1px solid rgba(239,68,68,0.3)' }
-                : { background: 'var(--accent-dim)', color: 'var(--accent-text)', border: '1px solid var(--accent-border)' }}>
-              <span className="inline-flex items-center justify-center gap-2">
-                <BellIcon size={16} />
-                {loading ? 'Setting up...' : subscribed ? 'Disable Notifications' : 'Enable Notifications'}
-              </span>
-            </button>
-          )}
-          {subscribed && (
-            <div className="mt-3 space-y-1.5">
-              {['12:00 PM PT — Lunch reminder', '6:00 PM PT — Dinner reminder', '12:00 AM PST — Daily nutrition recap', 'Monday 12:00 AM PST — Weekly nutrition report'].map(t => (
-                <div key={t} className="flex justify-between text-xs">
-                  <span className="t-muted">{t}</span>
-                  <span className="t-accent">✓ Active</span>
-                </div>
-              ))}
-              <button
-                onClick={sendTestNotification}
-                disabled={testLoading}
-                className="mt-2 w-full btn-secondary disabled:opacity-50 rounded-xl py-2.5 text-xs font-semibold"
-              >
-                {testLoading ? 'Sending test...' : 'Send test notification'}
-              </button>
-              {testStatus && <p className="text-xs t-muted">{testStatus}</p>}
-            </div>
-          )}
-
+          <p className="font-semibold text-sm t-text mb-0.5">Claude Daily Report</p>
+          <p className="text-xs t-muted mb-3">Generates for yesterday's data. Once per day.</p>
           <button
             onClick={runAnalysisNow}
-            disabled={analysisLoading}
-            className="mt-3 w-full btn-confirm disabled:opacity-50 rounded-xl py-2.5 text-xs font-semibold"
+            disabled={analysisLoading || analysisAlreadyDone}
+            className="w-full btn-confirm disabled:opacity-50 rounded-xl py-2.5 text-xs font-semibold"
           >
-            {analysisLoading ? 'Generating report (~10-20s)...' : '🧠 Run Today\'s Claude Report Now'}
+            {analysisLoading ? 'Generating report (~20s)...' : analysisAlreadyDone ? '✓ Report already generated today' : '🧠 Run Claude Report Now'}
           </button>
           {analysisStatus && <p className="text-xs t-muted mt-1">{analysisStatus}</p>}
         </div>

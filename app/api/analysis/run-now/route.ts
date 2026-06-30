@@ -16,28 +16,47 @@ webpush.setVapidDetails(
   process.env.VAPID_PRIVATE_KEY!
 )
 
-// Called directly from Settings button — no auth needed since it's
-// server-side only and CRON_SECRET is never exposed to the client.
+async function sendPush(msg: { title: string; body: string; url: string }) {
+  const { data: subs } = await supabase.from('push_subscriptions').select('*')
+  if (!subs || subs.length === 0) return
+  await Promise.allSettled(
+    subs.map((sub) =>
+      webpush.sendNotification(
+        { endpoint: sub.endpoint, keys: { auth: sub.auth, p256dh: sub.p256dh } },
+        JSON.stringify(msg)
+      )
+    )
+  )
+}
+
 export async function POST() {
   try {
-    const analysisMessage = await buildAnalysisMessage('daily-analysis')
-    if (!analysisMessage) {
-      return NextResponse.json({ error: 'No data to analyze yet — log today\'s meals first.' }, { status: 400 })
+    // Detect if today is Sunday in Pacific time — if so, run weekly too
+    const now = new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })
+    const isSunday = new Date(now).getDay() === 0
+
+    // Always run daily analysis (covers yesterday)
+    const dailyMsg = await buildAnalysisMessage('daily-analysis')
+    if (!dailyMsg) {
+      return NextResponse.json({ error: "No data to analyze yet — log yesterday's meals first." }, { status: 400 })
+    }
+    await sendPush({ title: dailyMsg.title, body: dailyMsg.body, url: dailyMsg.url })
+
+    // On Sundays, also run weekly analysis
+    let weeklyDone = false
+    if (isSunday) {
+      const weeklyMsg = await buildAnalysisMessage('weekly-analysis')
+      if (weeklyMsg) {
+        await sendPush({ title: weeklyMsg.title, body: weeklyMsg.body, url: weeklyMsg.url })
+        weeklyDone = true
+      }
     }
 
-    const { data: subs } = await supabase.from('push_subscriptions').select('*')
-    if (subs && subs.length > 0) {
-      await Promise.allSettled(
-        subs.map((sub) =>
-          webpush.sendNotification(
-            { endpoint: sub.endpoint, keys: { auth: sub.auth, p256dh: sub.p256dh } },
-            JSON.stringify({ title: analysisMessage.title, body: analysisMessage.body, url: analysisMessage.url })
-          )
-        )
-      )
-    }
-
-    return NextResponse.json({ success: true, title: analysisMessage.title })
+    return NextResponse.json({
+      success: true,
+      title: dailyMsg.title,
+      weekly: weeklyDone,
+    })
   } catch (error) {
     console.error('[run-now error]', error)
     return NextResponse.json({ error: String(error) }, { status: 500 })
