@@ -299,7 +299,7 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
     </div>
   )
 
-  const inputCls = "w-full t-input rounded-xl px-3 py-2.5 text-sm"
+  const inputCls = "w-full t-input rounded-xl px-3 py-2.5 text-base"
   const labelCls = "text-xs t-muted mb-1 block"
   const backBtn = (to: Screen) => (
     <button onClick={() => setScreen(to)} className="text-sm t-muted mb-4 flex items-center gap-1">

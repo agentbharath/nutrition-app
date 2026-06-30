@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState, useCallback, useRef } from 'react'
+import { useRouter } from 'next/navigation'
 import { supabase, DayType, DailyLog } from '@/lib/supabase'
 import { DAY_TYPE_OPTIONS, getDayMeals, calculateDayTotals, TARGETS, SWAP_OPTIONS, Macro, calcAdjustedTotals } from '@/lib/meals'
 import ProgressRing from '@/components/ProgressRing'
@@ -7,7 +8,6 @@ import MealCard from '@/components/MealCard'
 import DaySelector from '@/components/DaySelector'
 import SwapModal from '@/components/SwapModal'
 import BreakfastOverride from '@/components/BreakfastOverride'
-import QuickAdd from '@/components/QuickAdd'
 import ThemeCelebration from '@/components/ThemeCelebration'
 import BottomNav from '@/components/BottomNav'
 import { CalendarIcon, ClipboardIcon, DumbbellIcon, LeafIcon, PlusIcon } from '@/components/Icons'
@@ -69,13 +69,14 @@ function dedupeQuickAdds(items: StoredQuickItem[]) {
 
 export default function Home() {
   const { theme } = useTheme()
+  const router = useRouter()
   const [log, setLog] = useState<DailyLog | null>(null)
   const [quickAdds, setQuickAdds] = useState<QuickItem[]>([])
   const [loading, setLoading] = useState(true)
   const [showDaySelector, setShowDaySelector] = useState(false)
   const [showSwap, setShowSwap] = useState<'lunch'|'dinner'|null>(null)
   const [showBreakfastOverride, setShowBreakfastOverride] = useState(false)
-  const [showQuickAdd, setShowQuickAdd] = useState(false)
+  // Quick Add now a separate page - showQuickAdd removed
   const [saving, setSaving] = useState(false)
   const [celebration, setCelebration] = useState<CelebrationMetric | null>(null)
   const quickAddInFlight = useRef(new Set<string>())
@@ -229,7 +230,7 @@ export default function Home() {
       const { data } = await supabase.from('quick_adds').insert({ date: today, ...item }).select().single()
       const newQA = [...quickAdds, { ...item, id: data?.id }]
       setQuickAdds(newQA)
-      setShowQuickAdd(false)
+      // navigated back
       if (log) await syncConsumed(log, adjustedTotals, newQA)
     } finally {
       quickAddInFlight.current.delete(signature)
@@ -343,7 +344,7 @@ export default function Home() {
         <div className="mx-4 mb-4 t-card2 border t-border rounded-2xl p-4">
           <div className="flex items-center justify-between mb-3">
             <p className="text-xs t-muted uppercase tracking-wider">Today&apos;s Progress</p>
-            <button onClick={() => setShowQuickAdd(true)} className="text-xs btn-confirm rounded-lg px-2.5 py-1 flex items-center gap-1.5">
+            <button onClick={() => router.push('/quick-add')} className="text-xs btn-confirm rounded-lg px-2.5 py-1 flex items-center gap-1.5">
               <PlusIcon size={13} /> Quick Add
             </button>
           </div>
@@ -490,25 +491,6 @@ export default function Home() {
           onSave={async (c, p, s) => { await updateLog({ breakfast_override: true, breakfast_override_cal: c, breakfast_override_protein: p, breakfast_override_sodium: s }); setShowBreakfastOverride(false) }}
           onClose={() => setShowBreakfastOverride(false)}
         />
-      )}
-      {showQuickAdd && (
-        <div className="fixed inset-0 z-50 flex flex-col justify-end">
-          {/* Backdrop */}
-          <div className="absolute inset-0 bg-black/50" onClick={() => setShowQuickAdd(false)} />
-          {/* Sheet */}
-          <div className="relative rounded-t-2xl shadow-2xl max-h-[85vh] flex flex-col" style={{ background: 'var(--bg)' }}>
-            {/* Handle + header */}
-            <div className="flex items-center justify-between px-4 pt-3 pb-2 shrink-0">
-              <div className="w-8 h-1 rounded-full mx-auto" style={{ background: 'var(--border2)', position: 'absolute', left: '50%', transform: 'translateX(-50%)', top: 12 }} />
-              <p className="font-semibold text-sm t-text">Quick Add</p>
-              <button onClick={() => setShowQuickAdd(false)} className="text-xl t-muted leading-none">✕</button>
-            </div>
-            {/* Scrollable content */}
-            <div className="overflow-y-auto px-4 pb-8 flex-1">
-              <QuickAdd onAdd={handleQuickAdd} onClose={() => setShowQuickAdd(false)} />
-            </div>
-          </div>
-        </div>
       )}
     </main>
   )
