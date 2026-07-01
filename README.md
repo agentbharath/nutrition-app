@@ -10,12 +10,9 @@ Personal daily nutrition tracker — 1800 cal | 140g protein | <1500mg sodium
 
 | Variable | Value |
 |---|---|
-| `NEXT_PUBLIC_SUPABASE_URL` | `https://fahdzhlpnkvctfqrgjkp.supabase.co` |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZhaGR6aGxwbmt2Y3RmcXJnamtwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1OTI2NzEsImV4cCI6MjA5ODE2ODY3MX0.IOFdJWxh9a3bb2SAvsIjUrQI2VAHy9MVYU4T5s4dwHk` |
-| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | `BBPrC8z7uhPCAHsLutNYjgXa_P-dRXvFglg3GS5cvzJo65G2_AndRMZdDhAAjdk4n0W-1aqeowEInym90Bfz9Yw` |
-| `VAPID_PRIVATE_KEY` | `FatTUWdv4pvkCTMRWH0OALwAsL1QFq174tUkM6pnhaQ` |
-| `VAPID_EMAIL` | `mailto:bharath@nutrition.app` |
-| `CRON_SECRET` | `nutrition-cron-secret-2026` |
+| `NEXT_PUBLIC_SUPABASE_URL` | `https://projectid.supabase.co` |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | `` |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | `` |
 | `ANTHROPIC_API_KEY` | Claude API key for scheduled food analysis |
 | `ANTHROPIC_MODEL` | Optional, defaults to `claude-sonnet-4-5-20250929` |
 | `SUPABASE_SERVICE_ROLE_KEY` | Server-only Supabase key for health OAuth token storage |
