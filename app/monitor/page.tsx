@@ -205,7 +205,7 @@ export default function MonitorPage() {
                       <p className="text-[10px] t-muted">{selectedDailyAi.model}</p>
                       <a
                         href={`/api/report/pdf?date=${activeDate}`}
-                        download
+                        download={`nutrition-report-${activeDate}.pdf`}
                         className="btn-confirm rounded-lg px-2.5 py-1 text-[10px] font-semibold flex items-center gap-1"
                       >
                         ↓ PDF

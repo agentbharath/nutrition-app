@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import webpush from 'web-push'
 import { createClient } from '@supabase/supabase-js'
 import { buildAnalysisMessage } from '@/app/api/notify/route'
+import { createServiceSupabase } from '@/lib/health'
+import { getPacificDate } from '@/lib/nutrition-monitor'
 
 export const maxDuration = 60
 
@@ -31,6 +33,22 @@ async function sendPush(msg: { title: string; body: string; url: string }) {
 
 export async function POST() {
   try {
+    const reportDate = getPacificDate(-1)
+    const { data: existingReport } = await createServiceSupabase()
+      .from('nutrition_ai_reports')
+      .select('id')
+      .eq('report_type', 'daily')
+      .eq('period_end', reportDate)
+      .maybeSingle()
+
+    if (existingReport) {
+      return NextResponse.json({
+        success: true,
+        alreadyDone: true,
+        message: `Report already generated for ${reportDate}.`,
+      })
+    }
+
     // Detect if today is Sunday in Pacific time — if so, run weekly too
     const now = new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' })
     const isSunday = new Date(now).getDay() === 0

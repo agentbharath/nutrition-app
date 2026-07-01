@@ -153,7 +153,7 @@ export default function SettingsPage() {
       const res = await fetch('/api/analysis/run-now', { method: 'POST' })
       const data = await res.json()
       if (res.ok) {
-        setAnalysisStatus('✓ Report generated — check the Analysis tab.')
+        setAnalysisStatus(data.alreadyDone ? '✓ Report already generated for yesterday.' : '✓ Report generated — check the Analysis tab.')
         setAnalysisAlreadyDone(true)
       } else {
         setAnalysisStatus(data.error || 'Could not generate report.')
