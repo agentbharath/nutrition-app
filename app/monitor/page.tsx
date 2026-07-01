@@ -37,6 +37,7 @@ export default function MonitorPage() {
   const [aiReports, setAiReports] = useState<AiReportRow[]>([])
   const [healthMetrics, setHealthMetrics] = useState<HealthDailyMetrics[]>([])
   const [loading, setLoading] = useState(true)
+  const [downloadingPdf, setDownloadingPdf] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -82,6 +83,28 @@ export default function MonitorPage() {
   const sodiumWatchCount = repeatedWatches.filter((item) => item.toLowerCase().includes('sodium')).length
   const proteinWatchCount = repeatedWatches.filter((item) => item.toLowerCase().includes('protein')).length
   const fiberWatchCount = repeatedWatches.filter((item) => item.toLowerCase().includes('fiber')).length
+
+  async function downloadDailyReport(date: string) {
+    setDownloadingPdf(true)
+    try {
+      const response = await fetch(`/api/report/pdf?date=${encodeURIComponent(date)}`)
+      if (!response.ok) throw new Error('Could not download report')
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `nutrition-report-${date}.pdf`
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000)
+    } catch (error) {
+      console.error(error)
+      window.open(`/api/report/pdf?date=${encodeURIComponent(date)}`, '_blank')
+    } finally {
+      setDownloadingPdf(false)
+    }
+  }
 
   return (
     <main className="max-w-md mx-auto min-h-screen pb-24 t-bg">
@@ -202,13 +225,14 @@ export default function MonitorPage() {
                     </div>
                     <div className="flex flex-col items-end gap-1.5 shrink-0">
                       <p className="text-[10px] t-muted">{selectedDailyAi.model}</p>
-                      <a
-                        href={`/api/report/pdf?date=${activeDate}`}
-                        download={`nutrition-report-${activeDate}.pdf`}
+                      <button
+                        type="button"
+                        onClick={() => downloadDailyReport(activeDate)}
+                        disabled={downloadingPdf}
                         className="btn-confirm rounded-lg px-2.5 py-1 text-[10px] font-semibold flex items-center gap-1"
                       >
-                        ↓ PDF
-                      </a>
+                        {downloadingPdf ? 'Saving...' : '↓ PDF'}
+                      </button>
                     </div>
                   </div>
 
