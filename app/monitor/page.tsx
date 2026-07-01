@@ -202,7 +202,16 @@ export default function MonitorPage() {
                       <p className="text-xs t-muted uppercase tracking-wider">Claude daily report</p>
                       <h3 className="text-base font-bold t-text mt-1">{selectedDailyAi.analysis.title}</h3>
                     </div>
-                    <p className="text-[10px] t-muted text-right shrink-0">{selectedDailyAi.model}</p>
+                    <div className="flex flex-col items-end gap-1.5 shrink-0">
+                      <p className="text-[10px] t-muted">{selectedDailyAi.model}</p>
+                      <a
+                        href={`/api/report/pdf?date=${activeDate}`}
+                        download
+                        className="btn-confirm rounded-lg px-2.5 py-1 text-[10px] font-semibold flex items-center gap-1"
+                      >
+                        ↓ PDF
+                      </a>
+                    </div>
                   </div>
 
                   {selectedDailyAi.analysis.overall_assessment && (
