@@ -45,14 +45,13 @@ export default function MonitorPage() {
       const { data: quickAddData } = dates.length
         ? await supabase.from('quick_adds').select('*').in('date', dates)
         : { data: [] }
-      const { data: reportData } = await supabase
-        .from('nutrition_ai_reports')
-        .select('report_type, period_start, period_end, model, analysis')
-        .order('period_end', { ascending: false })
-        .limit(14)
       setLogs(logData || [])
       setQuickAdds((quickAddData || []) as QuickAddEntry[])
-      setAiReports((reportData || []) as AiReportRow[])
+      const reportRes = await fetch('/api/reports').catch(() => null)
+      if (reportRes?.ok) {
+        const reportData = await reportRes.json()
+        setAiReports((reportData.reports || []) as AiReportRow[])
+      }
       const healthRes = await fetch('/api/health/status').catch(() => null)
       if (healthRes?.ok) {
         const healthData = await healthRes.json()

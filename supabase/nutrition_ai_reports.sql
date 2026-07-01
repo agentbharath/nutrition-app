@@ -27,9 +27,4 @@ for each row execute function set_nutrition_ai_reports_updated_at();
 alter table nutrition_ai_reports enable row level security;
 
 drop policy if exists "Allow app access to nutrition ai reports" on nutrition_ai_reports;
-create policy "Allow app access to nutrition ai reports"
-on nutrition_ai_reports
-for all
-to anon
-using (true)
-with check (true);
+drop policy if exists "Allow anon read nutrition ai reports" on nutrition_ai_reports;

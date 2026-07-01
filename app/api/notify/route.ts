@@ -4,7 +4,7 @@ import { createClient } from '@supabase/supabase-js'
 import { getClaudeModel, generateDailyClaudeReport, generateWeeklyClaudeReport } from '@/lib/claude-nutrition'
 import { QuickAddEntry, analyzeFoodDay, buildDailyFoodSummary, buildWeeklySummary, getPacificDate, toMonitorDay } from '@/lib/nutrition-monitor'
 import { DailyLog, NutritionAiReport } from '@/lib/supabase'
-import { getHealthMetricsForDates, healthIntegrationConfigured, syncRecentHealthDays } from '@/lib/health'
+import { createServiceSupabase, getHealthMetricsForDates, healthIntegrationConfigured, syncRecentHealthDays } from '@/lib/health'
 
 // Hobby plan defaults to 10s timeout — Claude API analysis + health sync
 // routinely takes longer than that. This raises it to the Hobby max (60s).
@@ -22,7 +22,7 @@ webpush.setVapidDetails(
 )
 
 async function getPreviousWeeklyReport(beforeDate: string) {
-  const { data } = await supabase
+  const { data } = await createServiceSupabase()
     .from('nutrition_ai_reports')
     .select('*')
     .eq('report_type', 'weekly')
@@ -35,7 +35,7 @@ async function getPreviousWeeklyReport(beforeDate: string) {
 }
 
 async function saveAiReport(report: NutritionAiReport) {
-  const { error } = await supabase
+  const { error } = await createServiceSupabase()
     .from('nutrition_ai_reports')
     .upsert(report, { onConflict: 'report_type,period_start,period_end' })
 

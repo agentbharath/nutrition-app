@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { renderToBuffer, Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
+import { createServiceSupabase } from '@/lib/health'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -519,7 +520,7 @@ export async function GET(req: NextRequest) {
   if (!date) return NextResponse.json({ error: 'date required' }, { status: 400 })
 
   // Fetch report
-  const { data: reportRow } = await supabase
+  const { data: reportRow } = await createServiceSupabase()
     .from('nutrition_ai_reports')
     .select('*')
     .eq('report_type', 'daily')

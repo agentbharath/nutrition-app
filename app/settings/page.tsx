@@ -49,10 +49,13 @@ export default function SettingsPage() {
     const yesterday = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/Los_Angeles' }))
     yesterday.setDate(yesterday.getDate() - 1)
     const yDate = yesterday.toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
-    supabase.from('nutrition_ai_reports')
-      .select('id').eq('report_type', 'daily').eq('period_end', yDate)
-      .maybeSingle()
-      .then(({ data }) => { if (data) setAnalysisAlreadyDone(true) })
+    fetch('/api/reports')
+      .then((res) => res.ok ? res.json() : null)
+      .then((data) => {
+        const reports: Array<{ report_type?: string; period_end?: string }> = Array.isArray(data?.reports) ? data.reports : []
+        setAnalysisAlreadyDone(reports.some((report) => report.report_type === 'daily' && report.period_end === yDate))
+      })
+      .catch(() => {})
   }, [])
   const [resetLoading, setResetLoading] = useState(false)
   const [resetDone, setResetDone] = useState(false)
