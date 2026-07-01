@@ -45,9 +45,8 @@ Health sync adds steps, active minutes, Active Zone Minutes, resting heart rate,
 - 📋 Today screen with 5 progress rings
 - 🥗 Meal suggestions by day type (WFH/Office/Chipotle/Soya/Chana/Sunday)
 - ✓ Meal confirmation + swap options
-- 🔔 Push notifications at 12 PM (lunch) and 6 PM (dinner) PST
 - 🤖 Claude daily food analysis + progressive weekly reports
 - ⌚ Google Health sync for activity/body trend context
-- 📅 History list with expandable day details
+- 📅 History list with day details
 - ⚙️ Settings with notification toggle
 - 📱 PWA — installable to phone home screen
