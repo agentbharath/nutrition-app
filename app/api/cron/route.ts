@@ -1,10 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { createServiceSupabase } from '@/lib/health'
 
 export async function GET(req: NextRequest) {
   const auth = req.headers.get('authorization')
@@ -14,14 +9,14 @@ export async function GET(req: NextRequest) {
   const type = url.searchParams.get('type') || 'lunch'
 
   if (auth !== `Bearer ${process.env.CRON_SECRET}` && !isVercelCron) {
-    await supabase.from('cron_execution_log').insert({
+    await createServiceSupabase().from('cron_execution_log').insert({
       cron_type: type, triggered_by: 'unauthorized', success: false, error_message: 'Auth failed',
     })
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   // Log every invocation BEFORE doing the work, so we always see it even if downstream fails
-  const { error: logError } = await supabase.from('cron_execution_log').insert({
+  const { error: logError } = await createServiceSupabase().from('cron_execution_log').insert({
     cron_type: type,
     triggered_by: isVercelCron ? 'vercel-cron' : 'manual',
     vercel_cron_schedule: cronScheduleHeader,
@@ -38,7 +33,7 @@ export async function GET(req: NextRequest) {
       })
       const data = await res.json()
       if (!res.ok) {
-        await supabase.from('cron_execution_log').insert({
+        await createServiceSupabase().from('cron_execution_log').insert({
           cron_type: type, triggered_by: isVercelCron ? 'vercel-cron' : 'manual',
           success: false, error_message: JSON.stringify(data).slice(0, 500),
         })
@@ -53,14 +48,14 @@ export async function GET(req: NextRequest) {
     })
     const data = await res.json()
     if (!res.ok) {
-      await supabase.from('cron_execution_log').insert({
+      await createServiceSupabase().from('cron_execution_log').insert({
         cron_type: type, triggered_by: isVercelCron ? 'vercel-cron' : 'manual',
         success: false, error_message: JSON.stringify(data).slice(0, 500),
       })
     }
     return NextResponse.json(data, { status: res.status })
   } catch (err: any) {
-    await supabase.from('cron_execution_log').insert({
+    await createServiceSupabase().from('cron_execution_log').insert({
       cron_type: type, triggered_by: isVercelCron ? 'vercel-cron' : 'manual',
       success: false, error_message: String(err?.message || err).slice(0, 500),
     })

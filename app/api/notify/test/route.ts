@@ -1,11 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
-import { createClient } from '@supabase/supabase-js'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
+import { createServiceSupabase } from '@/lib/health'
 
 webpush.setVapidDetails(
   process.env.VAPID_EMAIL!,
@@ -19,7 +14,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing subscription endpoint' }, { status: 400 })
   }
 
-  const { data: sub, error } = await supabase
+  const { data: sub, error } = await createServiceSupabase()
     .from('push_subscriptions')
     .select('endpoint, auth, p256dh')
     .eq('endpoint', endpoint)

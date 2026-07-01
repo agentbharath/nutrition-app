@@ -1,12 +1,6 @@
 'use client'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@supabase/supabase-js'
 import QuickAdd from '@/components/QuickAdd'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 interface QuickItem {
   name: string
@@ -23,15 +17,19 @@ export default function QuickAddPage() {
 
   async function handleAdd(item: QuickItem) {
     const date = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
-    await supabase.from('quick_adds').insert({
-      date,
-      name: item.name,
-      emoji: item.emoji,
-      cal: item.cal,
-      protein: item.protein,
-      sodium: item.sodium,
-      carbs: item.carbs,
-      fiber: item.fiber,
+    await fetch('/api/quick-adds', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        date,
+        name: item.name,
+        emoji: item.emoji,
+        cal: item.cal,
+        protein: item.protein,
+        sodium: item.sodium,
+        carbs: item.carbs,
+        fiber: item.fiber,
+      }),
     })
     router.back()
   }

@@ -1,6 +1,5 @@
 'use client'
 import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
 import type { HealthDailyMetrics } from '@/lib/supabase'
 import { useTheme, THEMES, ThemeName } from '@/lib/theme'
 
@@ -107,7 +106,11 @@ export default function SettingsPage() {
       if (ex) await ex.unsubscribe()
       const sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY!) })
       const j = sub.toJSON()
-      await supabase.from('push_subscriptions').upsert({ endpoint: j.endpoint, auth: j.keys?.auth, p256dh: j.keys?.p256dh }, { onConflict: 'endpoint' })
+      await fetch('/api/push-subscriptions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(j),
+      })
       setSubscribed(true)
     } catch(e) { console.error(e) }
     setLoading(false)
@@ -116,7 +119,15 @@ export default function SettingsPage() {
   async function disableNotifications() {
     const r = await navigator.serviceWorker.ready
     const s = await r.pushManager.getSubscription()
-    if (s) { await supabase.from('push_subscriptions').delete().eq('endpoint', s.endpoint); await s.unsubscribe(); setSubscribed(false) }
+    if (s) {
+      await fetch('/api/push-subscriptions', {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ endpoint: s.endpoint }),
+      })
+      await s.unsubscribe()
+      setSubscribed(false)
+    }
   }
 
   async function sendTestNotification() {
@@ -169,8 +180,7 @@ export default function SettingsPage() {
   async function resetToday() {
     setResetLoading(true)
     const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
-    await supabase.from('daily_logs').delete().eq('date', today)
-    await supabase.from('quick_adds').delete().eq('date', today)
+    await fetch(`/api/daily-log?date=${today}`, { method: 'DELETE' })
     setResetDone(true)
     setTimeout(() => { window.location.href = '/' }, 600)
   }

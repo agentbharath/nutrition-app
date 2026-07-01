@@ -1,16 +1,10 @@
 import { NextResponse } from 'next/server'
 import webpush from 'web-push'
-import { createClient } from '@supabase/supabase-js'
 import { buildAnalysisMessage } from '@/app/api/notify/route'
 import { createServiceSupabase } from '@/lib/health'
 import { getPacificDate } from '@/lib/nutrition-monitor'
 
 export const maxDuration = 60
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 webpush.setVapidDetails(
   process.env.VAPID_EMAIL!,
@@ -19,7 +13,7 @@ webpush.setVapidDetails(
 )
 
 async function sendPush(msg: { title: string; body: string; url: string }) {
-  const { data: subs } = await supabase.from('push_subscriptions').select('*')
+  const { data: subs } = await createServiceSupabase().from('push_subscriptions').select('*')
   if (!subs || subs.length === 0) return
   await Promise.allSettled(
     subs.map((sub) =>

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import webpush from 'web-push'
-import { createClient } from '@supabase/supabase-js'
 import { getClaudeModel, generateDailyClaudeReport, generateWeeklyClaudeReport } from '@/lib/claude-nutrition'
 import { QuickAddEntry, analyzeFoodDay, buildDailyFoodSummary, buildWeeklySummary, getPacificDate, toMonitorDay } from '@/lib/nutrition-monitor'
 import { DailyLog, NutritionAiReport } from '@/lib/supabase'
@@ -9,11 +8,6 @@ import { createServiceSupabase, getHealthMetricsForDates, healthIntegrationConfi
 // Hobby plan defaults to 10s timeout — Claude API analysis + health sync
 // routinely takes longer than that. This raises it to the Hobby max (60s).
 export const maxDuration = 60
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 webpush.setVapidDetails(
   process.env.VAPID_EMAIL!,
@@ -44,7 +38,7 @@ async function saveAiReport(report: NutritionAiReport) {
 
 async function getQuickAddsForDates(dates: string[]) {
   if (dates.length === 0) return []
-  const { data } = await supabase
+  const { data } = await createServiceSupabase()
     .from('quick_adds')
     .select('*')
     .in('date', dates)
@@ -53,6 +47,8 @@ async function getQuickAddsForDates(dates: string[]) {
 }
 
 export async function buildAnalysisMessage(type: string) {
+  const supabase = createServiceSupabase()
+
   if ((type === 'daily-analysis' || type === 'weekly-analysis') && healthIntegrationConfigured()) {
     await syncRecentHealthDays(type === 'weekly-analysis' ? 8 : 2).catch((error) => {
       console.error('Health pre-sync failed', error)
@@ -190,7 +186,7 @@ export async function POST(req: NextRequest) {
 
   const msg = analysisMessage || messages[type] || messages.lunch
 
-  const { data: subs } = await supabase.from('push_subscriptions').select('*')
+  const { data: subs } = await createServiceSupabase().from('push_subscriptions').select('*')
   if (!subs || subs.length === 0) {
     return NextResponse.json({ sent: 0, analyzedDays: analysisMessage?.analyzedDays })
   }

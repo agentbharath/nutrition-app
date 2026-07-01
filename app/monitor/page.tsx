@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { supabase, DailyLog } from '@/lib/supabase'
+import type { DailyLog } from '@/lib/supabase'
 import type { HealthDailyMetrics } from '@/lib/supabase'
 import type { ClaudeNutritionReport } from '@/lib/claude-nutrition'
 import { analyzeFoodDay, formatMonitorDate, QuickAddEntry, toMonitorDay, weeklyScore } from '@/lib/nutrition-monitor'
@@ -40,13 +40,12 @@ export default function MonitorPage() {
 
   useEffect(() => {
     async function load() {
-      const { data: logData } = await supabase.from('daily_logs').select('*').order('date', { ascending: false }).limit(90)
-      const dates = (logData || []).map((log) => log.date)
-      const { data: quickAddData } = dates.length
-        ? await supabase.from('quick_adds').select('*').in('date', dates)
-        : { data: [] }
-      setLogs(logData || [])
-      setQuickAdds((quickAddData || []) as QuickAddEntry[])
+      const logsRes = await fetch('/api/logs?limit=90').catch(() => null)
+      if (logsRes?.ok) {
+        const logsData = await logsRes.json()
+        setLogs((logsData.logs || []) as DailyLog[])
+        setQuickAdds((logsData.quickAdds || []) as QuickAddEntry[])
+      }
       const reportRes = await fetch('/api/reports').catch(() => null)
       if (reportRes?.ok) {
         const reportData = await reportRes.json()

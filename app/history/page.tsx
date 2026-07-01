@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { supabase, DailyLog, DayType } from '@/lib/supabase'
+import type { DailyLog, DayType } from '@/lib/supabase'
 import { DAY_TYPE_OPTIONS } from '@/lib/meals'
 import { QuickAddEntry, analyzeFoodDay, formatMonitorDate } from '@/lib/nutrition-monitor'
 import BottomNav from '@/components/BottomNav'
@@ -52,14 +52,12 @@ export default function HistoryPage() {
 
   useEffect(() => {
     async function load() {
-      const { data: logData } = await supabase.from('daily_logs').select('*').order('date', { ascending: false }).limit(120)
-      const dates = (logData || []).map((log) => log.date)
-      const { data: quickAddData } = dates.length
-        ? await supabase.from('quick_adds').select('*').in('date', dates)
-        : { data: [] }
-      setLogs(logData || [])
-      setQuickAdds((quickAddData || []) as QuickAddEntry[])
-      if (logData?.[0]) {
+      const response = await fetch('/api/logs?limit=120')
+      const data = response.ok ? await response.json() : { logs: [], quickAdds: [] }
+      const logData = (data.logs || []) as DailyLog[]
+      setLogs(logData)
+      setQuickAdds((data.quickAdds || []) as QuickAddEntry[])
+      if (logData[0]) {
         setSelectedDate(logData[0].date)
         setVisibleMonth(dateFromKey(logData[0].date))
       }

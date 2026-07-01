@@ -1,7 +1,7 @@
 'use client'
 import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase, DayType, DailyLog } from '@/lib/supabase'
+import type { DayType, DailyLog } from '@/lib/supabase'
 import { DAY_TYPE_OPTIONS, getDayMeals, calculateDayTotals, TARGETS, SWAP_OPTIONS, Macro, calcAdjustedTotals } from '@/lib/meals'
 import ProgressRing from '@/components/ProgressRing'
 import MealCard from '@/components/MealCard'
@@ -23,6 +23,18 @@ function getGreeting() {
   if (h < 12) return 'Good morning'
   if (h < 17) return 'Good afternoon'
   return 'Good evening'
+}
+
+async function apiJson<T>(url: string, init?: RequestInit): Promise<T> {
+  const response = await fetch(url, {
+    ...init,
+    headers: { 'Content-Type': 'application/json', ...(init?.headers || {}) },
+  })
+  if (!response.ok) {
+    const body = await response.json().catch(() => null)
+    throw new Error(body?.error || `Request failed: ${response.status}`)
+  }
+  return response.json()
 }
 
 interface QuickItem { id?: string; name: string; emoji: string; cal: number; protein: number; sodium: number; carbs: number; fiber: number }
@@ -89,15 +101,15 @@ export default function Home() {
   const today = getTodayDate()
 
   const fetchLog = useCallback(async () => {
-    const { data } = await supabase.from('daily_logs').select('*').eq('date', today).maybeSingle()
-    setLog(data)
+    const data = await apiJson<{ log: DailyLog | null; quickAdds: StoredQuickItem[] }>(`/api/daily-log?date=${today}`)
+    setLog(data.log)
 
-    if (data?.meal_customizations && data.day_type) {
-      const savedMultipliers = data.meal_customizations as Partial<Record<MealKey, Record<number, number>>>
+    if (data.log?.meal_customizations && data.log.day_type) {
+      const savedMultipliers = data.log.meal_customizations as Partial<Record<MealKey, Record<number, number>>>
       setMealMultipliers(savedMultipliers)
 
       // Restore adjusted totals from saved multipliers
-      const dayMeals = getDayMeals(data.day_type as DayType, data.gym_day)
+      const dayMeals = getDayMeals(data.log.day_type as DayType, data.log.gym_day)
       const mealMap: Partial<Record<MealKey, any>> = {
         breakfast: dayMeals.breakfast,
         lunch: dayMeals.lunch,
@@ -116,11 +128,13 @@ export default function Home() {
       setAdjustedTotals(restored)
     }
 
-    const { data: qa } = await supabase.from('quick_adds').select('*').eq('date', today)
-    const { unique, duplicateIds } = dedupeQuickAdds((qa || []) as StoredQuickItem[])
+    const { unique, duplicateIds } = dedupeQuickAdds(data.quickAdds || [])
     setQuickAdds(unique)
     if (duplicateIds.length > 0) {
-      await supabase.from('quick_adds').delete().in('id', duplicateIds)
+      await apiJson('/api/quick-adds', {
+        method: 'DELETE',
+        body: JSON.stringify({ ids: duplicateIds }),
+      })
     }
     setLoading(false)
   }, [today])
@@ -130,7 +144,9 @@ export default function Home() {
   async function createLog(dayType: DayType, gymDay: boolean) {
     setSaving(true)
     const totals = calculateDayTotals(dayType, gymDay)
-    const { data } = await supabase.from('daily_logs').upsert({
+    const data = await apiJson<{ log: DailyLog }>('/api/daily-log', {
+      method: 'POST',
+      body: JSON.stringify({
       date: today, day_type: dayType, gym_day: gymDay,
       breakfast_confirmed: dayType !== 'sunday_fast', // Sunday fast = manual confirm
       lunch_confirmed: false, dinner_confirmed: false,
@@ -138,14 +154,18 @@ export default function Home() {
       cal_total: totals.cal, protein_total: totals.protein,
       sodium_total: totals.sodium, fiber_total: totals.fiber, carbs_total: totals.carbs,
       meal_customizations: {},
-    }, { onConflict: 'date' }).select().single()
-    setLog(data); setShowDaySelector(false); setSaving(false)
+      }),
+    })
+    setLog(data.log); setShowDaySelector(false); setSaving(false)
   }
 
   async function updateLog(updates: Partial<DailyLog>) {
     if (!log) return
-    const { data } = await supabase.from('daily_logs').update(updates).eq('id', log.id).select().single()
-    setLog(data)
+    const data = await apiJson<{ log: DailyLog }>('/api/daily-log', {
+      method: 'PATCH',
+      body: JSON.stringify({ id: log.id, updates }),
+    })
+    setLog(data.log)
   }
 
   async function syncConsumed(updatedLog: DailyLog, updatedAdjusted: Partial<Record<MealKey, Macro>>, updatedQuickAdds: QuickItem[]) {
@@ -168,13 +188,19 @@ export default function Home() {
     if ((updatedLog as any).snack_confirmed && meals.snack) add(eff('snack', meals.snack.totals))
     updatedQuickAdds.forEach(qa => { c.cal += qa.cal; c.protein += qa.protein; c.sodium += qa.sodium; c.fiber += qa.fiber; c.carbs += qa.carbs })
 
-    await supabase.from('daily_logs').update({
+    await apiJson<{ log: DailyLog }>('/api/daily-log', {
+      method: 'PATCH',
+      body: JSON.stringify({
+        id: updatedLog.id,
+        updates: {
       cal_consumed: Math.round(c.cal),
       protein_consumed: Math.round(c.protein * 10) / 10,
       sodium_consumed: Math.round(c.sodium),
       fiber_consumed: Math.round(c.fiber * 10) / 10,
       carbs_consumed: Math.round(c.carbs * 10) / 10,
-    }).eq('id', updatedLog.id)
+        },
+      }),
+    })
   }
 
   async function confirmMeal(key: MealKey, adjusted?: Macro) {
@@ -183,13 +209,14 @@ export default function Home() {
       shake: 'shake_confirmed', vita_coco: 'vita_coco_confirmed',
       dinner: 'dinner_confirmed', snack: 'snack_confirmed',
     }
-    await supabase.from('daily_logs').update({ [fieldMap[key]]: true } as any).eq('id', log!.id)
     const newAdj = adjusted ? { ...adjustedTotals, [key]: adjusted } : adjustedTotals
     if (adjusted) setAdjustedTotals(newAdj)
-    // Refetch fresh data from DB
-    const { data } = await supabase.from('daily_logs').select('*').eq('id', log!.id).single()
-    setLog(data)
-    if (data) await syncConsumed(data, newAdj, quickAdds)
+    const data = await apiJson<{ log: DailyLog }>('/api/daily-log', {
+      method: 'PATCH',
+      body: JSON.stringify({ id: log!.id, updates: { [fieldMap[key]]: true } }),
+    })
+    setLog(data.log)
+    if (data.log) await syncConsumed(data.log, newAdj, quickAdds)
   }
 
   async function undoMeal(key: MealKey) {
@@ -198,14 +225,15 @@ export default function Home() {
       shake: 'shake_confirmed', vita_coco: 'vita_coco_confirmed',
       dinner: 'dinner_confirmed', snack: 'snack_confirmed',
     }
-    await supabase.from('daily_logs').update({ [fieldMap[key]]: false } as any).eq('id', log!.id)
     const newAdj = { ...adjustedTotals }
     delete newAdj[key]
     setAdjustedTotals(newAdj)
-    // Refetch fresh data from DB to guarantee UI is in sync
-    const { data } = await supabase.from('daily_logs').select('*').eq('id', log!.id).single()
-    setLog(data)
-    if (data) await syncConsumed(data, newAdj, quickAdds)
+    const data = await apiJson<{ log: DailyLog }>('/api/daily-log', {
+      method: 'PATCH',
+      body: JSON.stringify({ id: log!.id, updates: { [fieldMap[key]]: false } }),
+    })
+    setLog(data.log)
+    if (data.log) await syncConsumed(data.log, newAdj, quickAdds)
   }
 
   async function saveMealMultipliers(key: MealKey, multipliers: Record<number, number>, adjusted: Macro) {
@@ -217,7 +245,10 @@ export default function Home() {
 
   async function applySwap(meal: 'lunch'|'dinner', newMealId: string) {
     await updateLog({ [`${meal}_swapped_to`]: newMealId })
-    await supabase.from('meal_swaps_log').insert({ date: today, meal_type: meal, original_meal: meal, swapped_to: newMealId })
+    await apiJson('/api/meal-swaps', {
+      method: 'POST',
+      body: JSON.stringify({ date: today, meal_type: meal, original_meal: meal, swapped_to: newMealId }),
+    })
     setShowSwap(null)
   }
 
@@ -227,8 +258,11 @@ export default function Home() {
 
     quickAddInFlight.current.add(signature)
     try {
-      const { data } = await supabase.from('quick_adds').insert({ date: today, ...item }).select().single()
-      const newQA = [...quickAdds, { ...item, id: data?.id }]
+      const data = await apiJson<{ quickAdd: StoredQuickItem }>('/api/quick-adds', {
+        method: 'POST',
+        body: JSON.stringify({ date: today, ...item }),
+      })
+      const newQA = [...quickAdds, { ...item, id: data.quickAdd?.id }]
       setQuickAdds(newQA)
       // navigated back
       if (log) await syncConsumed(log, adjustedTotals, newQA)
@@ -238,7 +272,7 @@ export default function Home() {
   }
 
   async function removeQuickAdd(id: string) {
-    await supabase.from('quick_adds').delete().eq('id', id)
+    await apiJson(`/api/quick-adds?id=${encodeURIComponent(id)}`, { method: 'DELETE' })
     const newQA = quickAdds.filter(qa => qa.id !== id)
     setQuickAdds(newQA)
     if (log) await syncConsumed(log, adjustedTotals, newQA)

@@ -1,13 +1,7 @@
 'use client'
 import { useState, useEffect, useRef } from 'react'
-import { createClient } from '@supabase/supabase-js'
 import { searchIngredients, searchUSDAIngredients, IngredientNutrition } from '@/lib/ingredient-nutrition'
 import { parseNutritionLabel } from '@/lib/nutrition-label'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 interface QuickItem {
   name: string
@@ -95,14 +89,11 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
 
   // Load recent items from quick_adds
   useEffect(() => {
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Los_Angeles' })
-    supabase
-      .from('quick_adds')
-      .select('name, emoji, cal, protein, sodium, carbs, fiber, date')
-      .order('date', { ascending: false })
-      .limit(50)
-      .then(({ data }) => {
-        if (!data) return
+    fetch('/api/quick-adds?limit=50')
+      .then((response) => response.ok ? response.json() : null)
+      .then((payload) => {
+        const data = payload?.quickAdds
+        if (!Array.isArray(data)) return
         const seen = new Set<string>()
         const unique: QuickItem[] = []
         for (const row of data) {
@@ -122,6 +113,7 @@ export default function QuickAdd({ onAdd, onClose }: Props) {
         }
         setRecentItems(unique)
       })
+      .catch(() => {})
   }, [])
 
   // Search across presets + USDA

@@ -1,12 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { renderToBuffer, Document, Page, Text, View, StyleSheet, Font } from '@react-pdf/renderer'
 import { createServiceSupabase } from '@/lib/health'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-)
 
 // Colors
 const GREEN = '#1A6B4A'
@@ -518,9 +512,10 @@ function ReportPDF({
 export async function GET(req: NextRequest) {
   const date = req.nextUrl.searchParams.get('date')
   if (!date) return NextResponse.json({ error: 'date required' }, { status: 400 })
+  const supabase = createServiceSupabase()
 
   // Fetch report
-  const { data: reportRow } = await createServiceSupabase()
+  const { data: reportRow } = await supabase
     .from('nutrition_ai_reports')
     .select('*')
     .eq('report_type', 'daily')
