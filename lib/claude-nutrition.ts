@@ -210,11 +210,11 @@ function safeText(value: unknown): string {
 function normalizeReport(value: Partial<ClaudeNutritionReport>, fallback: ClaudeNutritionReport): ClaudeNutritionReport {
   return {
     title: typeof value.title === 'string' ? value.title.slice(0, 90) : fallback.title,
-    overall_assessment: typeof value.overall_assessment === 'string' ? value.overall_assessment.slice(0, 600) : fallback.overall_assessment,
+    overall_assessment: typeof value.overall_assessment === 'string' ? value.overall_assessment.slice(0, 1500) : fallback.overall_assessment,
     biggest_wins: Array.isArray(value.biggest_wins) ? value.biggest_wins.map(safeText).slice(0, 4) : fallback.biggest_wins,
     biggest_opportunities: Array.isArray(value.biggest_opportunities) ? value.biggest_opportunities.map(safeText).slice(0, 4) : fallback.biggest_opportunities,
-    food_analysis: typeof value.food_analysis === 'string' ? value.food_analysis.slice(0, 700) : fallback.food_analysis,
-    recovery_analysis: typeof value.recovery_analysis === 'string' ? value.recovery_analysis.slice(0, 600) : fallback.recovery_analysis,
+    food_analysis: typeof value.food_analysis === 'string' ? value.food_analysis.slice(0, 1500) : fallback.food_analysis,
+    recovery_analysis: typeof value.recovery_analysis === 'string' ? value.recovery_analysis.slice(0, 1500) : fallback.recovery_analysis,
     pattern_detection: Array.isArray(value.pattern_detection) ? value.pattern_detection.map(safeText).slice(0, 5) : fallback.pattern_detection,
     personalized_recommendations: Array.isArray(value.personalized_recommendations) ? value.personalized_recommendations.map(safeText).slice(0, 3) : fallback.personalized_recommendations,
     food_flags: Array.isArray(value.food_flags) ? value.food_flags.map(safeText).slice(0, 3) : fallback.food_flags,

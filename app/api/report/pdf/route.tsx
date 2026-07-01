@@ -425,7 +425,7 @@ function ReportPDF({
 
           {/* Food Flags */}
           {hasFlags && (
-            <View style={styles.flagBox}>
+            <View style={styles.flagBox} wrap={false}>
               <Text style={styles.flagLabel}>⚠ Food Flags</Text>
               {report.food_flags!.map((flag, i) => (
                 <Text key={i} style={styles.flagText}>• {flag}</Text>
@@ -433,31 +433,31 @@ function ReportPDF({
             </View>
           )}
 
-          {/* Wins + Opportunities side by side */}
-          <View style={styles.twoCol}>
-            {report.biggest_wins && report.biggest_wins.length > 0 && (
-              <View style={styles.col}>
-                <Text style={styles.sectionLabel}>Biggest Wins</Text>
-                {report.biggest_wins.map((win, i) => (
-                  <View key={i} style={styles.bulletRow}>
-                    <Text style={styles.bulletDot}>✓</Text>
-                    <Text style={styles.bulletText}>{win}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-            {report.biggest_opportunities && report.biggest_opportunities.length > 0 && (
-              <View style={styles.col}>
-                <Text style={styles.sectionLabel}>Opportunities</Text>
-                {report.biggest_opportunities.map((opp, i) => (
-                  <View key={i} style={styles.bulletRow}>
-                    <Text style={styles.oppDot}>○</Text>
-                    <Text style={styles.oppText}>{opp}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-          </View>
+          {/* Wins */}
+          {report.biggest_wins && report.biggest_wins.length > 0 && (
+            <View style={styles.section} wrap={false}>
+              <Text style={styles.sectionLabel}>Biggest Wins</Text>
+              {report.biggest_wins.map((win, i) => (
+                <View key={i} style={styles.bulletRow}>
+                  <Text style={styles.bulletDot}>+</Text>
+                  <Text style={styles.bulletText}>{win}</Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* Opportunities */}
+          {report.biggest_opportunities && report.biggest_opportunities.length > 0 && (
+            <View style={styles.section} wrap={false}>
+              <Text style={styles.sectionLabel}>Opportunities</Text>
+              {report.biggest_opportunities.map((opp, i) => (
+                <View key={i} style={styles.bulletRow}>
+                  <Text style={styles.oppDot}>-</Text>
+                  <Text style={styles.oppText}>{opp}</Text>
+                </View>
+              ))}
+            </View>
+          )}
 
           {/* Food Analysis */}
           {report.food_analysis && (
@@ -477,11 +477,11 @@ function ReportPDF({
 
           {/* Pattern Detection */}
           {report.pattern_detection && report.pattern_detection.length > 0 && (
-            <View style={styles.section}>
+            <View style={styles.section} wrap={false}>
               <Text style={styles.sectionLabel}>Patterns Emerging</Text>
               {report.pattern_detection.map((p, i) => (
                 <View key={i} style={styles.bulletRow}>
-                  <Text style={styles.bulletDot}>↗</Text>
+                  <Text style={styles.bulletDot}>*</Text>
                   <Text style={styles.bulletText}>{p}</Text>
                 </View>
               ))}
@@ -490,11 +490,11 @@ function ReportPDF({
 
           {/* Focus / Recommendations */}
           {report.personalized_recommendations && report.personalized_recommendations.length > 0 && (
-            <View style={styles.focusBox}>
+            <View style={styles.focusBox} wrap={false}>
               <Text style={styles.focusLabel}>Focus for Today</Text>
               {report.personalized_recommendations.map((rec, i) => (
                 <View key={i} style={styles.focusItem}>
-                  <Text style={styles.focusArrow}>→</Text>
+                  <Text style={styles.focusArrow}>&gt;</Text>
                   <Text style={styles.focusText}>{rec}</Text>
                 </View>
               ))}
