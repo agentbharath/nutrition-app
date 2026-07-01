@@ -1,6 +1,6 @@
-# Bharath Nutrition Tracker 🥗
+# Personal Nutrition Tracker 🥗
 
-Personal daily nutrition tracker — 1800 cal | 140g protein | <1500mg sodium
+Personal daily nutrition tracker
 
 ## Deploy to Vercel
 
